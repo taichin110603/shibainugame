@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>犬スイカゲーム 🐶</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
@@ -76,16 +77,16 @@ body, html {
 <script>
 const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
 
-// 判定：スマホかPCか
-const isMobile = window.innerWidth <= 768;
+// 判定：スマホかPCか（UserAgentでより正確に判定）
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
 // 画面サイズ
 const width = window.innerWidth;
 const height = window.innerHeight;
 
 // 容器サイズと位置
-const containerWidth  = isMobile ? 500 : 420;  // スマホ版はさらに大きく
-const containerHeight = isMobile ? 650 : 520;  // スマホ版はさらに大きく
+const containerWidth  = isMobile ? 550 : 420;  // スマホ版さらに大きく
+const containerHeight = isMobile ? 700 : 520;  // スマホ版さらに大きく
 const wallThickness   = 10;
 const centerX         = width / 2;
 const bottomY         = isMobile ? height * 0.85 : height * 0.9;
@@ -138,8 +139,8 @@ const dogImages = [
 
 // 元サイズ
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// スマホ版はさらに大きく1.5倍
-const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.5)) : baseSizes;
+// スマホ版はさらに大きく1.5倍～1.6倍
+const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.6)) : baseSizes;
 
 //////////////////////////////////////////////////
 // ゲーム変数
@@ -161,8 +162,8 @@ function createBall(sizeIndex, x, y, isStatic=false){
 
   // サイズに応じて密度調整（小さいボールほど少し重くしてすり抜け防止）
   const density = sizeIndex === 0 
-      ? (isMobile ? 0.006 : 0.003)  // スマホでは少し重く
-      : 0.0015;
+      ? (isMobile ? 0.008 : 0.003)  // スマホでは少し重く
+      : 0.0018;
 
   const ball = Bodies.circle(x, y, radius, {
     restitution:0.15,
@@ -195,7 +196,7 @@ function spawnBall(){
   if(isGameOver) return;
   const sizeIndex = Math.floor(Math.random()*3);
   // 初期位置を容器に近づける（スマホ版）
-  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 20 : 80;
+  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 30 : 80;
   currentBall = createBall(sizeIndex, centerX, startY, true);
   World.add(world,currentBall);
 }

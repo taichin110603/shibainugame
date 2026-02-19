@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>しばいぬゲーム 🐶</title>
+<title>犬スイカゲーム 🐶</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
@@ -85,11 +85,11 @@ const width = window.innerWidth;
 const height = window.innerHeight;
 
 // 容器サイズと位置
-const containerWidth  = isMobile ? 650 : 420;  // スマホ版はさらに大きく
-const containerHeight = isMobile ? 800 : 520;  // スマホ版はさらに大きく
+const containerWidth  = isMobile ? 550 : 420;  // スマホは大きめ
+const containerHeight = isMobile ? 700 : 520;  // スマホは大きめ
 const wallThickness   = 10;
 const centerX         = width / 2;
-const bottomY         = isMobile ? height * 0.85 : height * 0.92; // PC版は少し下げる
+const bottomY         = isMobile ? height * 0.85 : height * 0.92; // PC版少し下げ
 
 // Matter.js エンジン
 const engine = Engine.create();
@@ -138,8 +138,8 @@ const dogImages = [
 ];
 
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// スマホ版はぱっと見で大きいサイズに1.8倍
-const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.8)) : baseSizes;
+// スマホ版は1.5倍に縮小
+const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.5)) : baseSizes;
 
 //////////////////////////////////////////////////
 // ゲーム変数
@@ -158,7 +158,7 @@ document.getElementById("highScore").innerText = highScore;
 function createBall(sizeIndex, x, y, isStatic=false){
   const radius = sizes[sizeIndex];
   const texturePath = dogImages[sizeIndex];
-  const density = sizeIndex===0 ? (isMobile?0.01:0.003) : 0.002;
+  const density = sizeIndex===0 ? (isMobile?0.008:0.003) : 0.002;
 
   const ball = Bodies.circle(x,y,radius,{
     restitution:0.15,
@@ -187,8 +187,7 @@ function createBall(sizeIndex, x, y, isStatic=false){
 function spawnBall(){
   if(isGameOver) return;
   const sizeIndex = Math.floor(Math.random()*3);
-  // PC版は投下位置を高く、スマホ版は容器上から30px
-  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 30 : 30;
+  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 30 : 30; // PCは高く、スマホは容器上から30px
   currentBall = createBall(sizeIndex, centerX, startY, true);
   World.add(world,currentBall);
 }
@@ -316,4 +315,3 @@ updateRanking();
 </script>
 </body>
 </html>
-

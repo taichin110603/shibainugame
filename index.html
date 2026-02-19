@@ -83,9 +83,9 @@ const isMobile = window.innerWidth <= 768;
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-// 容器サイズと位置を分ける
-const containerWidth  = isMobile ? 350 : 420;
-const containerHeight = isMobile ? 480 : 520;
+// 容器サイズと位置
+const containerWidth  = isMobile ? 500 : 420;  // スマホ版はさらに大きく
+const containerHeight = isMobile ? 650 : 520;  // スマホ版はさらに大きく
 const wallThickness   = 10;
 const centerX         = width / 2;
 const bottomY         = isMobile ? height * 0.85 : height * 0.9;
@@ -135,7 +135,11 @@ const dogImages = [
   "images/inugame_size8.png",
   "images/inugame_size9.png"
 ];
-const sizes = [18,26,36,48,62,78,100,125,160];
+
+// 元サイズ
+const baseSizes = [18,26,36,48,62,78,100,125,160];
+// スマホ版はさらに大きく1.5倍
+const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.5)) : baseSizes;
 
 //////////////////////////////////////////////////
 // ゲーム変数

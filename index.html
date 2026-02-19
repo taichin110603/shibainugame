@@ -93,8 +93,8 @@ const bottomY         = isMobile ? height * 0.85 : height * 0.9;
 // Matter.js エンジン
 const engine = Engine.create();
 engine.world.gravity.y = 1;
-engine.positionIterations = 10; // 衝突精度アップ
-engine.velocityIterations = 10;
+engine.positionIterations = 15; // 衝突精度アップ
+engine.velocityIterations = 15; // 高速落下防止
 const world = engine.world;
 
 // レンダラー
@@ -118,7 +118,6 @@ Runner.run(Runner.create(), engine);
 const leftWall = Bodies.rectangle(centerX - containerWidth/2, bottomY - containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{fillStyle:"#000"}});
 const rightWall = Bodies.rectangle(centerX + containerWidth/2, bottomY - containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{fillStyle:"#000"}});
 const floor = Bodies.rectangle(centerX, bottomY, containerWidth, wallThickness, {isStatic:true, render:{fillStyle:"#000"}});
-
 World.add(world,[leftWall,rightWall,floor]);
 
 //////////////////////////////////////////////////
@@ -156,8 +155,10 @@ function createBall(sizeIndex, x, y, isStatic=false){
   const radius = sizes[sizeIndex];
   const texturePath = dogImages[sizeIndex];
 
-  // サイズに応じて密度調整（小さいボールほど少し重くする）
-  const density = sizeIndex === 0 ? 0.003 : 0.0015;
+  // サイズに応じて密度調整（小さいボールほど少し重くしてすり抜け防止）
+  const density = sizeIndex === 0 
+      ? (isMobile ? 0.006 : 0.003)  // スマホでは少し重く
+      : 0.0015;
 
   const ball = Bodies.circle(x, y, radius, {
     restitution:0.15,
@@ -189,8 +190,8 @@ function createBall(sizeIndex, x, y, isStatic=false){
 function spawnBall(){
   if(isGameOver) return;
   const sizeIndex = Math.floor(Math.random()*3);
-  // スマホ版は落下位置を少し低く、PC版は従来通り
-  const startY = isMobile ? 60 : 80;
+  // 初期位置を容器に近づける（スマホ版）
+  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 20 : 80;
   currentBall = createBall(sizeIndex, centerX, startY, true);
   World.add(world,currentBall);
 }
@@ -204,10 +205,30 @@ spawnBall();
 function moveBall(clientX){
   if(!currentBall || isGameOver) return;
   const x = Math.max(centerX - containerWidth/2 + 20, Math.min(clientX, centerX + containerWidth/2 - 20));
-  Body.setPosition(currentBall,{x:x,y:isMobile?60:80});
+  Body.setPosition(currentBall,{x:x,y:currentBall.position.y});
 }
+
+// PC版マウス
 window.addEventListener("mousemove", e => moveBall(e.clientX));
-window.addEventListener("touchmove", e => { if(e.touches.length>0) moveBall(e.touches[0].clientX); });
+window.addEventListener("click", shootBall);
+
+// スマホ版タッチ
+window.addEventListener("touchstart", e => {
+  if(e.touches.length>0) moveBall(e.touches[0].clientX);
+  e.preventDefault();
+});
+window.addEventListener("touchmove", e => {
+  if(e.touches.length>0) moveBall(e.touches[0].clientX);
+  e.preventDefault();
+});
+window.addEventListener("touchend", e => {
+  shootBall();
+  e.preventDefault();
+});
+
+//////////////////////////////////////////////////
+// ボール落下
+//////////////////////////////////////////////////
 
 function shootBall(){
   if(isGameOver || !currentBall) return;
@@ -215,8 +236,6 @@ function shootBall(){
   currentBall = null;
   setTimeout(spawnBall,350);
 }
-window.addEventListener("click", shootBall);
-window.addEventListener("touchstart", shootBall);
 
 //////////////////////////////////////////////////
 // 合体処理

@@ -87,12 +87,12 @@ const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-// 容器サイズ・位置（壁が見えるように大きく）
+// 容器サイズ・位置
 const containerWidth  = isMobile ? Math.min(width*0.85, 400) : 420;
 const containerHeight = isMobile ? Math.min(height*0.55, 550) : 520;
 
-// 容器上端・下端
-const containerTopY = isMobile ? 20 : height*0.1;
+// スマホ版は下寄りに表示
+const containerTopY = isMobile ? 60 : height*0.1;
 const bottomY = containerTopY + containerHeight;
 
 const wallThickness = 10;
@@ -145,7 +145,6 @@ const dogImages = [
 ];
 
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// スマホ版はさらに大きめに1.3倍
 const sizeMultiplier = isMobile ? 1.3 : 1;
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
@@ -195,7 +194,7 @@ function createBall(sizeIndex, x, y, isStatic=false){
 function spawnBall(){
   if(isGameOver) return;
   const sizeIndex = Math.floor(Math.random()*3);
-  const startY = containerTopY - sizes[sizeIndex] - 10; // 容器上端の少し上
+  const startY = containerTopY - sizes[sizeIndex] - 5; // 容器上端の少し上
   currentBall = createBall(sizeIndex, centerX, startY, true);
   World.add(world,currentBall);
 }
@@ -216,19 +215,16 @@ window.addEventListener("mousemove", e => moveBall(e.clientX));
 window.addEventListener("click", shootBall);
 
 window.addEventListener("touchstart", e => {
-  if(e.target.id==="retryBtn") return;
+  if(e.target.id==="retryBtn") return; // リトライ除外
   if(e.touches.length>0) moveBall(e.touches[0].clientX);
-  e.preventDefault();
 });
 window.addEventListener("touchmove", e => {
   if(e.target.id==="retryBtn") return;
   if(e.touches.length>0) moveBall(e.touches[0].clientX);
-  e.preventDefault();
 });
 window.addEventListener("touchend", e => {
   if(e.target.id==="retryBtn") return;
   shootBall();
-  e.preventDefault();
 });
 
 //////////////////////////////////////////////////

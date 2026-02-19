@@ -91,8 +91,8 @@ const height = window.innerHeight;
 const containerWidth  = isMobile ? Math.min(width*0.85, 400) : 420;
 const containerHeight = isMobile ? Math.min(height*0.55, 550) : 520;
 
-// スマホ版は下寄りに表示
-const containerTopY = isMobile ? 60 : height*0.1;
+// スマホ版はさらに下寄り
+const containerTopY = isMobile ? 120 : height*0.1;
 const bottomY = containerTopY + containerHeight;
 
 const wallThickness = 10;
@@ -145,7 +145,8 @@ const dogImages = [
 ];
 
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-const sizeMultiplier = isMobile ? 1.3 : 1;
+// スマホ版は少し小さめ1.15倍
+const sizeMultiplier = isMobile ? 1.15 : 1;
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
 //////////////////////////////////////////////////

@@ -90,11 +90,8 @@ const height = window.innerHeight;
 // 容器サイズ・位置
 const containerWidth  = isMobile ? Math.min(width*0.85, 400) : 420;
 const containerHeight = isMobile ? Math.min(height*0.55, 550) : 520;
-
-// 容器上端の位置（スマホ版は下寄り）
-const containerTopY = isMobile ? 200 : height*0.1;
+const containerTopY = isMobile ? 250 : height*0.1;
 const bottomY = containerTopY + containerHeight;
-
 const wallThickness = 10;
 const centerX = width/2;
 
@@ -143,8 +140,7 @@ const dogImages = [
 ];
 
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// 全体を少し小さく
-const sizeMultiplier = isMobile ? 0.9 : 0.85;
+const sizeMultiplier = isMobile ? 0.8 : 0.85; // 少し小さめ
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
 //////////////////////////////////////////////////
@@ -233,8 +229,8 @@ function shootBall(){
 //////////////////////////////////////////////////
 // 合体・消去処理
 //////////////////////////////////////////////////
-Events.on(engine,"collisionStart",event=>{
-  event.pairs.forEach(pair=>{
+Events.on(engine,"collisionStart", event => {
+  event.pairs.forEach(pair => {
     const a = pair.bodyA;
     const b = pair.bodyB;
 

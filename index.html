@@ -1,326 +1,37 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>犬スイカゲーム 🐶</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-
-<style>
-body, html {
-  margin:0;
-  overflow:hidden;
-  width:100%;
-  height:100%;
-  background:linear-gradient(#ffe8c7,#ffd6a5);
-  font-family:sans-serif;
-}
-
-#scoreBox{
-  position:absolute;
-  top:22%;
-  right:8%;
-  font-size:20px;
-  z-index:10;
-}
-
-#rankingBox{
-  position:absolute;
-  top:5%;
-  left:8%;
-  width:220px;
-  font-size:16px;
-  line-height:1.6em;
-  z-index:10;
-}
-
-#gameOver{
-  position:absolute;
-  top:40%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  text-align:center;
-  display:none;
-  z-index:20;
-}
-
-#gameOver h1{
-  color:red;
-  font-size:50px;
-}
-
-#retryBtn{
-  padding:10px 25px;
-  font-size:18px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  background:#ff595e;
-  color:white;
-}
-</style>
-</head>
-<body>
-
-<div id="scoreBox">
-  <div>Score : <span id="score">0</span></div>
-  <div>High : <span id="highScore">0</span></div>
-</div>
-
-<div id="rankingBox">
-  <div><b>本日のランキング</b></div>
-  <div id="ranking"></div>
-</div>
-
-<div id="gameOver">
-  <h1>GAME OVER</h1>
-  <button id="retryBtn">Retry</button>
-</div>
-
-<script>
-const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
-
-// スマホ判定
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
-// 画面サイズ
-const width = window.innerWidth;
-const height = window.innerHeight;
-
-// 容器サイズ・位置
-const containerWidth  = isMobile ? Math.min(width*0.85, 400) : 420;
-const containerHeight = isMobile ? Math.min(height*0.55, 550) : 520;
-
-// スマホ版はさらに下寄り
-const containerTopY = isMobile ? 180 : height*0.1;
-const bottomY = containerTopY + containerHeight;
-
-const wallThickness = 10;
-const centerX = width/2;
-
-// Matter.js エンジン
-const engine = Engine.create();
-engine.world.gravity.y = 1;
-engine.positionIterations = 15;
-engine.velocityIterations = 15;
-const world = engine.world;
-
-// レンダラー
-const render = Render.create({
-  element: document.body,
-  engine: engine,
-  options:{
-    width: width,
-    height: height,
-    wireframes:false,
-    background:"transparent"
-  }
-});
-Render.run(render);
-Runner.run(Runner.create(), engine);
-
-//////////////////////////////////////////////////
-// 容器
-//////////////////////////////////////////////////
-
-const leftWall = Bodies.rectangle(centerX - containerWidth/2, containerTopY + containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{fillStyle:"#000"}});
-const rightWall = Bodies.rectangle(centerX + containerWidth/2, containerTopY + containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{fillStyle:"#000"}});
-const floor = Bodies.rectangle(centerX, bottomY, containerWidth, wallThickness, {isStatic:true, render:{fillStyle:"#000"}});
-World.add(world,[leftWall,rightWall,floor]);
-
-//////////////////////////////////////////////////
-// ボール画像・サイズ
-//////////////////////////////////////////////////
-
-const dogImages = [
-  "images/inugame_size1.png",
-  "images/inugame_size2.png",
-  "images/inugame_size3.png",
-  "images/inugame_size4.png",
-  "images/inugame_size5.png",
-  "images/inugame_size6.png",
-  "images/inugame_size7.png",
-  "images/inugame_size8.png",
-  "images/inugame_size9.png"
-];
-
-const baseSizes = [18,26,36,48,62,78,100,125,160];
-// スマホ版は少し小さめ1.05倍
-const sizeMultiplier = isMobile ? 1.05 : 1;
-const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
-
-//////////////////////////////////////////////////
-// ゲーム変数
-//////////////////////////////////////////////////
-
-let currentBall = null;
-let score = 0;
-let highScore = localStorage.getItem("highScore") || 0;
-let isGameOver = false;
-document.getElementById("highScore").innerText = highScore;
-
-//////////////////////////////////////////////////
-// ボール生成
-//////////////////////////////////////////////////
-
-function createBall(sizeIndex, x, y, isStatic=false){
-  const radius = sizes[sizeIndex];
-  const texturePath = dogImages[sizeIndex];
-  const density = sizeIndex===0 ? (isMobile?0.006:0.003) : 0.002;
-
-  const ball = Bodies.circle(x,y,radius,{
-    restitution:0.15,
-    friction:0.2,
-    density:density,
-    isStatic:isStatic,
-    render:{ sprite:{ texture:texturePath, xScale:1, yScale:1 }}
-  });
-
-  const img = new Image();
-  img.src = texturePath;
-  img.onload = function(){
-    const scale = (radius*2)/Math.max(img.width,img.height);
-    ball.render.sprite.xScale = scale;
-    ball.render.sprite.yScale = scale;
-  };
-
-  ball.sizeIndex = sizeIndex;
-  return ball;
-}
-
-//////////////////////////////////////////////////
-// ボールスポーン
-//////////////////////////////////////////////////
-
-function spawnBall(){
-  if(isGameOver) return;
-  const sizeIndex = Math.floor(Math.random()*3);
-  const startY = containerTopY - sizes[sizeIndex] - 5; // 容器上端の少し上
-  currentBall = createBall(sizeIndex, centerX, startY, true);
-  World.add(world,currentBall);
-}
-
-spawnBall();
-
-//////////////////////////////////////////////////
-// マウス・タッチ操作
-//////////////////////////////////////////////////
-
-function moveBall(clientX){
-  if(!currentBall || isGameOver) return;
-  const x = Math.max(centerX - containerWidth/2 + 20, Math.min(clientX, centerX + containerWidth/2 - 20));
-  Body.setPosition(currentBall,{x:x,y:currentBall.position.y});
-}
-
-window.addEventListener("mousemove", e => moveBall(e.clientX));
-window.addEventListener("click", shootBall);
-
-window.addEventListener("touchstart", e => {
-  if(e.target.id==="retryBtn") return; // リトライ除外
-  if(e.touches.length>0) moveBall(e.touches[0].clientX);
-});
-window.addEventListener("touchmove", e => {
-  if(e.target.id==="retryBtn") return;
-  if(e.touches.length>0) moveBall(e.touches[0].clientX);
-});
-window.addEventListener("touchend", e => {
-  if(e.target.id==="retryBtn") return;
-  shootBall();
-});
-
-//////////////////////////////////////////////////
-// ボール落下
-//////////////////////////////////////////////////
-
-function shootBall(){
-  if(isGameOver || !currentBall) return;
-  Body.setStatic(currentBall,false);
-  currentBall=null;
-  setTimeout(spawnBall,350);
-}
-
-//////////////////////////////////////////////////
-// 合体
-//////////////////////////////////////////////////
-
+// 合体・消去処理
 Events.on(engine,"collisionStart",event=>{
   event.pairs.forEach(pair=>{
     const a = pair.bodyA;
     const b = pair.bodyB;
-    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a!==currentBall && b!==currentBall && a.sizeIndex===b.sizeIndex){
-      const newSize = (a.sizeIndex<sizes.length-1)?a.sizeIndex+1:sizes.length-1;
-      const newBall = createBall(
-        newSize,
-        (a.position.x+b.position.x)/2,
-        (a.position.y+b.position.y)/2
-      );
-      World.remove(world,a);
-      World.remove(world,b);
-      World.add(world,newBall);
+    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a!==currentBall && b!==currentBall){
+      if(a.sizeIndex === b.sizeIndex){
+        const newSize = (a.sizeIndex<sizes.length-1)?a.sizeIndex+1:sizes.length-1;
 
-      score += (newSize+1)*5;
-      document.getElementById("score").innerText = score;
+        // 一番大きいサイズ同士なら消去
+        if(a.sizeIndex === sizes.length-1 && b.sizeIndex === sizes.length-1){
+          World.remove(world,a);
+          World.remove(world,b);
+          return; // 終了
+        }
 
-      if(score>highScore){
-        highScore=score;
-        localStorage.setItem("highScore",highScore);
-        document.getElementById("highScore").innerText = highScore;
+        const newBall = createBall(
+          newSize,
+          (a.position.x+b.position.x)/2,
+          (a.position.y+b.position.y)/2
+        );
+        World.remove(world,a);
+        World.remove(world,b);
+        World.add(world,newBall);
+
+        score += (newSize+1)*5;
+        document.getElementById("score").innerText = score;
+
+        if(score>highScore){
+          highScore=score;
+          localStorage.setItem("highScore",highScore);
+          document.getElementById("highScore").innerText = highScore;
+        }
       }
     }
   });
 });
-
-//////////////////////////////////////////////////
-// ゲームオーバー
-//////////////////////////////////////////////////
-
-Events.on(engine,"afterUpdate",()=>{
-  if(isGameOver) return;
-  world.bodies.forEach(body=>{
-    if(body.sizeIndex!==undefined && body.position.y>height+200){
-      gameOver();
-    }
-  });
-});
-
-function gameOver(){
-  if(isGameOver) return;
-  isGameOver=true;
-  document.getElementById("gameOver").style.display="block";
-  updateRanking();
-}
-
-//////////////////////////////////////////////////
-// リトライ
-//////////////////////////////////////////////////
-
-document.getElementById("retryBtn").addEventListener("click", e=>{
-  e.stopPropagation();
-  world.bodies.slice().forEach(body=>{if(body.sizeIndex!==undefined)World.remove(world,body);});
-  score=0; document.getElementById("score").innerText=0;
-  isGameOver=false;
-  document.getElementById("gameOver").style.display="none";
-  spawnBall();
-});
-
-//////////////////////////////////////////////////
-// ランキング
-//////////////////////////////////////////////////
-
-function updateRanking(){
-  const today = new Date().toISOString().slice(0,10);
-  const key = "ranking_"+today;
-  let ranking = JSON.parse(localStorage.getItem(key)||"[]");
-  ranking.push(score);
-  ranking.sort((a,b)=>b-a);
-  ranking=ranking.slice(0,3);
-  localStorage.setItem(key,JSON.stringify(ranking));
-  const box = document.getElementById("ranking");
-  box.innerHTML="";
-  ranking.forEach((s,i)=>{ box.innerHTML += `${i+1}位 : ${s}<br>`; });
-}
-
-updateRanking();
-</script>
-</body>
-</html>

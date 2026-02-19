@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>犬スイカゲーム 🐶</title>
+<title>しばいぬゲーム 🐶</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
@@ -84,12 +84,12 @@ const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-// 容器サイズと位置
-const containerWidth  = isMobile ? 450 : 420;  // スマホ版少し大きめ
-const containerHeight = isMobile ? 580 : 520;  // スマホ版少し大きめ
+// 容器サイズと位置（画面サイズに合わせて調整）
+const containerWidth  = isMobile ? Math.min(width * 0.8, 400) : 420;
+const containerHeight = isMobile ? Math.min(height * 0.6, 600) : 520;
 const wallThickness   = 10;
 const centerX         = width / 2;
-const bottomY         = isMobile ? height * 0.85 : height * 0.92; // PC版少し下げ
+const bottomY         = isMobile ? height - 60 : height * 0.92; // 底から少し上に
 
 // Matter.js エンジン
 const engine = Engine.create();
@@ -138,8 +138,9 @@ const dogImages = [
 ];
 
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// スマホ版は1.2倍に縮小
-const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.2)) : baseSizes;
+// スマホ版は容器サイズに合わせて少し大きめ（倍率 1.1～1.2）
+const sizeMultiplier = isMobile ? Math.min(containerHeight/600, 1.2) : 1;
+const sizes = baseSizes.map(s => Math.round(s * sizeMultiplier));
 
 //////////////////////////////////////////////////
 // ゲーム変数
@@ -187,7 +188,8 @@ function createBall(sizeIndex, x, y, isStatic=false){
 function spawnBall(){
   if(isGameOver) return;
   const sizeIndex = Math.floor(Math.random()*3);
-  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 30 : 30; // PCは高く
+  // ボールの開始位置：容器上端の少し上に
+  const startY = bottomY - containerHeight - sizes[sizeIndex] - 10;
   currentBall = createBall(sizeIndex, centerX, startY, true);
   World.add(world,currentBall);
 }
@@ -295,7 +297,7 @@ document.getElementById("retryBtn").addEventListener("click",()=>{
 });
 
 //////////////////////////////////////////////////
-// ランキング　
+// ランキング
 //////////////////////////////////////////////////
 
 function updateRanking(){

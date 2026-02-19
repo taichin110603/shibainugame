@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>いぬいぬゲーム 🐶</title>
+<title>犬スイカゲーム 🐶</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
@@ -87,9 +87,9 @@ const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-// 容器サイズ・位置（思い切って大きく）
-const containerWidth  = isMobile ? Math.min(width*0.9, 420) : 420;
-const containerHeight = isMobile ? Math.min(height*0.6, 600) : 520;
+// 容器サイズ・位置（壁が見えるように大きく）
+const containerWidth  = isMobile ? Math.min(width*0.85, 400) : 420;
+const containerHeight = isMobile ? Math.min(height*0.55, 550) : 520;
 
 // 容器上端・下端
 const containerTopY = isMobile ? 20 : height*0.1;
@@ -145,8 +145,8 @@ const dogImages = [
 ];
 
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// 思い切ってスマホ版は1.2倍
-const sizeMultiplier = isMobile ? 1.2 : 1;
+// スマホ版はさらに大きめに1.3倍
+const sizeMultiplier = isMobile ? 1.3 : 1;
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
 //////////////////////////////////////////////////
@@ -298,7 +298,7 @@ function gameOver(){
 //////////////////////////////////////////////////
 
 document.getElementById("retryBtn").addEventListener("click", e=>{
-  e.stopPropagation(); // touchstart preventDefaultを回避
+  e.stopPropagation();
   world.bodies.slice().forEach(body=>{if(body.sizeIndex!==undefined)World.remove(world,body);});
   score=0; document.getElementById("score").innerText=0;
   isGameOver=false;

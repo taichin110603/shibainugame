@@ -77,7 +77,7 @@ body, html {
 <script>
 const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
 
-// 判定：スマホかPCか（UserAgentでより正確に判定）
+// スマホ判定（UserAgentで確実に）
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
 // 画面サイズ
@@ -85,17 +85,18 @@ const width = window.innerWidth;
 const height = window.innerHeight;
 
 // 容器サイズと位置
-const containerWidth  = isMobile ? 550 : 420;  // スマホ版さらに大きく
-const containerHeight = isMobile ? 700 : 520;  // スマホ版さらに大きく
+const containerWidth  = isMobile ? 550 : 420;  // スマホは大きく
+const containerHeight = isMobile ? 700 : 520;  // スマホは大きく
 const wallThickness   = 10;
 const centerX         = width / 2;
-const bottomY         = isMobile ? height * 0.85 : height * 0.9;
+// PC版は底を少し下げ、スマホ版はそのまま
+const bottomY         = isMobile ? height * 0.85 : height * 0.92;
 
 // Matter.js エンジン
 const engine = Engine.create();
 engine.world.gravity.y = 1;
-engine.positionIterations = 15; // 衝突精度アップ
-engine.velocityIterations = 15; // 高速落下防止
+engine.positionIterations = 15;
+engine.velocityIterations = 15;
 const world = engine.world;
 
 // レンダラー
@@ -122,7 +123,7 @@ const floor = Bodies.rectangle(centerX, bottomY, containerWidth, wallThickness, 
 World.add(world,[leftWall,rightWall,floor]);
 
 //////////////////////////////////////////////////
-// 🐶 犬画像・サイズ
+// ボール画像・サイズ
 //////////////////////////////////////////////////
 
 const dogImages = [
@@ -137,9 +138,7 @@ const dogImages = [
   "images/inugame_size9.png"
 ];
 
-// 元サイズ
 const baseSizes = [18,26,36,48,62,78,100,125,160];
-// スマホ版はさらに大きく1.5倍～1.6倍
 const sizes = isMobile ? baseSizes.map(s=>Math.round(s*1.6)) : baseSizes;
 
 //////////////////////////////////////////////////
@@ -153,33 +152,26 @@ let isGameOver = false;
 document.getElementById("highScore").innerText = highScore;
 
 //////////////////////////////////////////////////
-// ボール生成関数
+// ボール生成
 //////////////////////////////////////////////////
 
 function createBall(sizeIndex, x, y, isStatic=false){
   const radius = sizes[sizeIndex];
   const texturePath = dogImages[sizeIndex];
+  const density = sizeIndex===0 ? (isMobile?0.008:0.003) : 0.0018;
 
-  // サイズに応じて密度調整（小さいボールほど少し重くしてすり抜け防止）
-  const density = sizeIndex === 0 
-      ? (isMobile ? 0.008 : 0.003)  // スマホでは少し重く
-      : 0.0018;
-
-  const ball = Bodies.circle(x, y, radius, {
+  const ball = Bodies.circle(x,y,radius,{
     restitution:0.15,
     friction:0.2,
     density:density,
     isStatic:isStatic,
-    render:{
-      sprite:{ texture: texturePath, xScale:1, yScale:1 }
-    }
+    render:{ sprite:{ texture:texturePath, xScale:1, yScale:1 }}
   });
 
-  // 元画像の比率に合わせてスケール
   const img = new Image();
   img.src = texturePath;
   img.onload = function(){
-    const scale = (radius*2) / Math.max(img.width, img.height);
+    const scale = (radius*2)/Math.max(img.width,img.height);
     ball.render.sprite.xScale = scale;
     ball.render.sprite.yScale = scale;
   };
@@ -195,8 +187,7 @@ function createBall(sizeIndex, x, y, isStatic=false){
 function spawnBall(){
   if(isGameOver) return;
   const sizeIndex = Math.floor(Math.random()*3);
-  // 初期位置を容器に近づける（スマホ版）
-  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 30 : 80;
+  const startY = isMobile ? bottomY - containerHeight + sizes[sizeIndex] + 30 : 60; // PC版は少し上
   currentBall = createBall(sizeIndex, centerX, startY, true);
   World.add(world,currentBall);
 }
@@ -213,11 +204,9 @@ function moveBall(clientX){
   Body.setPosition(currentBall,{x:x,y:currentBall.position.y});
 }
 
-// PC版マウス
 window.addEventListener("mousemove", e => moveBall(e.clientX));
 window.addEventListener("click", shootBall);
 
-// スマホ版タッチ
 window.addEventListener("touchstart", e => {
   if(e.touches.length>0) moveBall(e.touches[0].clientX);
   e.preventDefault();
@@ -238,12 +227,12 @@ window.addEventListener("touchend", e => {
 function shootBall(){
   if(isGameOver || !currentBall) return;
   Body.setStatic(currentBall,false);
-  currentBall = null;
+  currentBall=null;
   setTimeout(spawnBall,350);
 }
 
 //////////////////////////////////////////////////
-// 合体処理
+// 合体
 //////////////////////////////////////////////////
 
 Events.on(engine,"collisionStart",event=>{
@@ -251,7 +240,7 @@ Events.on(engine,"collisionStart",event=>{
     const a = pair.bodyA;
     const b = pair.bodyB;
     if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a!==currentBall && b!==currentBall && a.sizeIndex===b.sizeIndex){
-      const newSize = (a.sizeIndex < sizes.length-1) ? a.sizeIndex+1 : sizes.length-1;
+      const newSize = (a.sizeIndex<sizes.length-1)?a.sizeIndex+1:sizes.length-1;
       const newBall = createBall(
         newSize,
         (a.position.x+b.position.x)/2,
@@ -265,7 +254,7 @@ Events.on(engine,"collisionStart",event=>{
       document.getElementById("score").innerText = score;
 
       if(score>highScore){
-        highScore = score;
+        highScore=score;
         localStorage.setItem("highScore",highScore);
         document.getElementById("highScore").innerText = highScore;
       }
@@ -274,7 +263,7 @@ Events.on(engine,"collisionStart",event=>{
 });
 
 //////////////////////////////////////////////////
-// ゲームオーバー判定
+// ゲームオーバー
 //////////////////////////////////////////////////
 
 Events.on(engine,"afterUpdate",()=>{
@@ -288,7 +277,7 @@ Events.on(engine,"afterUpdate",()=>{
 
 function gameOver(){
   if(isGameOver) return;
-  isGameOver = true;
+  isGameOver=true;
   document.getElementById("gameOver").style.display="block";
   updateRanking();
 }
@@ -298,7 +287,7 @@ function gameOver(){
 //////////////////////////////////////////////////
 
 document.getElementById("retryBtn").addEventListener("click",()=>{
-  world.bodies.slice().forEach(body=>{ if(body.sizeIndex!==undefined) World.remove(world,body); });
+  world.bodies.slice().forEach(body=>{if(body.sizeIndex!==undefined)World.remove(world,body);});
   score=0; document.getElementById("score").innerText=0;
   isGameOver=false;
   document.getElementById("gameOver").style.display="none";
@@ -311,11 +300,11 @@ document.getElementById("retryBtn").addEventListener("click",()=>{
 
 function updateRanking(){
   const today = new Date().toISOString().slice(0,10);
-  const key = "ranking_" + today;
+  const key = "ranking_"+today;
   let ranking = JSON.parse(localStorage.getItem(key)||"[]");
   ranking.push(score);
   ranking.sort((a,b)=>b-a);
-  ranking = ranking.slice(0,3);
+  ranking=ranking.slice(0,3);
   localStorage.setItem(key,JSON.stringify(ranking));
   const box = document.getElementById("ranking");
   box.innerHTML="";

@@ -14,7 +14,11 @@ body,html{
   font-family:sans-serif;
 }
 
-/* スコア右上 */
+canvas{
+  touch-action:none;
+}
+
+/* スコア */
 #scoreBox{
   position:absolute;
   top:15px;
@@ -23,14 +27,14 @@ body,html{
   z-index:10;
 }
 
-/* ランキング左下に移動 */
+/* ランキング */
 #rankingBox{
   position:absolute;
   bottom:15px;
   left:15px;
-  width:220px;
+  width:230px;
   font-size:13px;
-  background:rgba(255,255,255,0.85);
+  background:rgba(255,255,255,0.9);
   padding:10px;
   border-radius:10px;
   z-index:10;
@@ -62,11 +66,12 @@ button{
 
 <div id="scoreBox">
 Score: <span id="score">0</span><br>
-High: <span id="highScore">0</span>
+High: <span id="highScore">0</span><br>
+Today: <span id="dailyHigh">0</span>
 </div>
 
 <div id="rankingBox">
-<b>🌍 世界ランキング TOP10</b>
+<b>🌍 世界ランキング TOP5</b>
 <div id="ranking"></div>
 </div>
 
@@ -87,7 +92,13 @@ const height=window.innerHeight;
 const isMobile=width<768;
 
 const engine=Engine.create();
-engine.world.gravity.y=1;
+engine.world.gravity.y=1.1;
+
+/* 🔥 物理精度最大 */
+engine.positionIterations=20;
+engine.velocityIterations=20;
+engine.constraintIterations=6;
+
 const world=engine.world;
 
 const render=Render.create({
@@ -105,10 +116,11 @@ const centerX=width/2;
 const topY=height*0.15;
 const bottomY=topY+containerHeight;
 
+/* 🔥 壁を超厚く */
 World.add(world,[
-  Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,10,containerHeight,{isStatic:true}),
-  Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,10,containerHeight,{isStatic:true}),
-  Bodies.rectangle(centerX,bottomY,containerWidth,10,{isStatic:true})
+  Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,60,containerHeight,{isStatic:true}),
+  Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,60,containerHeight,{isStatic:true}),
+  Bodies.rectangle(centerX,bottomY+20,containerWidth,80,{isStatic:true}) /* 底埋め込み */
 ]);
 
 /* サイズ */
@@ -130,15 +142,23 @@ const images=[
 let currentBall=null;
 let score=0;
 let isGameOver=false;
+
+/* ローカル保存 */
 let highScore=localStorage.getItem("highScore")||0;
 document.getElementById("highScore").innerText=highScore;
+
+const todayKey="daily-"+new Date().toISOString().slice(0,10);
+let dailyHigh=localStorage.getItem(todayKey)||0;
+document.getElementById("dailyHigh").innerText=dailyHigh;
 
 /* ボール生成 */
 function createBall(i,x,y,s=false){
   const r=sizes[i];
   const ball=Bodies.circle(x,y,r,{
-    restitution:0.15,
-    friction:0.2,
+    restitution:0.1,
+    friction:0.3,
+    frictionAir:0.03,
+    bullet:true,
     isStatic:s,
     render:{sprite:{texture:images[i],xScale:1,yScale:1}}
   });
@@ -162,26 +182,25 @@ function spawn(){
 }
 spawn();
 
-/* 横移動制限（容器の中だけ） */
+/* 移動制限 */
 function move(x){
   if(!currentBall||isGameOver)return;
-
-  const min=centerX-containerWidth/2+30;
-  const max=centerX+containerWidth/2-30;
-
-  const fixedX=Math.max(min,Math.min(max,x));
-  Body.setPosition(currentBall,{x:fixedX,y:topY-40});
+  const min=centerX-containerWidth/2+40;
+  const max=centerX+containerWidth/2-40;
+  const fixed=Math.max(min,Math.min(max,x));
+  Body.setPosition(currentBall,{x:fixed,y:topY-40});
 }
 
-/* PC */
 window.addEventListener("mousemove",e=>move(e.clientX));
 window.addEventListener("click",drop);
 
-/* スマホ */
 window.addEventListener("touchmove",e=>{
   move(e.touches[0].clientX);
 });
-window.addEventListener("touchend",drop);
+window.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  drop();
+},{passive:false});
 
 function drop(){
   if(currentBall&&!isGameOver){
@@ -203,23 +222,19 @@ Events.on(engine,"collisionStart",e=>{
         World.add(world,createBall(n,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2));
         score+=(n+1)*5;
         document.getElementById("score").innerText=score;
+
         if(score>highScore){
           highScore=score;
           localStorage.setItem("highScore",highScore);
           document.getElementById("highScore").innerText=highScore;
         }
-      }
-    }
-  });
-});
 
-/* ゲームオーバー */
-Events.on(engine,"afterUpdate",()=>{
-  if(isGameOver)return;
-  world.bodies.forEach(b=>{
-    if(b.sizeIndex!==undefined&&b.position.y>height+200){
-      isGameOver=true;
-      document.getElementById("gameOver").style.display="block";
+        if(score>dailyHigh){
+          dailyHigh=score;
+          localStorage.setItem(todayKey,dailyHigh);
+          document.getElementById("dailyHigh").innerText=dailyHigh;
+        }
+      }
     }
   });
 });
@@ -249,7 +264,7 @@ window.submitScore=function(){
   push(ref(db,"ranking"),{name,score,time:Date.now()});
 };
 
-const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(10));
+const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(5));
 
 onValue(rankingRef,(snapshot)=>{
   const box=document.getElementById("ranking");
@@ -258,7 +273,7 @@ onValue(rankingRef,(snapshot)=>{
   snapshot.forEach(c=>data.push(c.val()));
   data.reverse();
   data.forEach((item,i)=>{
-    box.innerHTML+=(i===0?"🏆 ":""+(i+1)+"位 ")+item.name+" - "+item.score+"<br>";
+    box.innerHTML+=(i===0?"👑 ":""+(i+1)+"位 ")+item.name+" - "+item.score+"<br>";
   });
 });
 </script>

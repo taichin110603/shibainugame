@@ -24,7 +24,6 @@ canvas{
   touch-action:none;
 }
 
-/* スコア */
 #scoreBox{
   position:absolute;
   top:10px;
@@ -33,7 +32,6 @@ canvas{
   z-index:10;
 }
 
-/* ランキング */
 #rankingBox{
   position:absolute;
   bottom:10px;
@@ -93,16 +91,12 @@ Today: <span id="dailyHigh">0</span>
 <script>
 const {Engine,Render,Runner,World,Bodies,Body,Events}=Matter;
 
-/* 正しい高さ取得 */
 const width=window.innerWidth;
 const height=document.documentElement.clientHeight;
-
 const isMobile=width<768;
 
 const engine=Engine.create();
 engine.world.gravity.y=1.05;
-
-/* 物理安定 */
 engine.positionIterations=15;
 engine.velocityIterations=15;
 
@@ -118,11 +112,11 @@ const render=Render.create({
     background:"transparent"
   }
 });
-
 Render.run(render);
 Runner.run(Runner.create(),engine);
 
-/* 容器サイズ */
+/* ===== 丸い容器 ===== */
+
 const containerWidth=isMobile?width*0.9:420;
 const containerHeight=isMobile?height*0.6:520;
 
@@ -130,23 +124,62 @@ const centerX=width/2;
 const topY=height*0.15;
 const bottomY=topY+containerHeight;
 
-/* 🔥 見えない壁（描画透明） */
+const wallThickness=40;
+const cornerRadius=40;
+
+/* 左壁 */
+const leftWall=Bodies.rectangle(
+  centerX-containerWidth/2,
+  bottomY-containerHeight/2,
+  wallThickness,
+  containerHeight-cornerRadius,
+  {isStatic:true,render:{visible:false}}
+);
+
+/* 右壁 */
+const rightWall=Bodies.rectangle(
+  centerX+containerWidth/2,
+  bottomY-containerHeight/2,
+  wallThickness,
+  containerHeight-cornerRadius,
+  {isStatic:true,render:{visible:false}}
+);
+
+/* 底 */
+const bottomWall=Bodies.rectangle(
+  centerX,
+  bottomY+15,
+  containerWidth-cornerRadius*2,
+  60,
+  {isStatic:true,render:{visible:false}}
+);
+
+/* 左下角 */
+const bottomLeftCorner=Bodies.circle(
+  centerX-containerWidth/2+cornerRadius,
+  bottomY-cornerRadius+15,
+  cornerRadius,
+  {isStatic:true,render:{visible:false}}
+);
+
+/* 右下角 */
+const bottomRightCorner=Bodies.circle(
+  centerX+containerWidth/2-cornerRadius,
+  bottomY-cornerRadius+15,
+  cornerRadius,
+  {isStatic:true,render:{visible:false}}
+);
+
 World.add(world,[
-  Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{
-    isStatic:true,
-    render:{visible:false}
-  }),
-  Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{
-    isStatic:true,
-    render:{visible:false}
-  }),
-  Bodies.rectangle(centerX,bottomY+15,containerWidth,50,{
-    isStatic:true,
-    render:{visible:false}
-  })
+  leftWall,
+  rightWall,
+  bottomWall,
+  bottomLeftCorner,
+  bottomRightCorner
 ]);
 
-/* サイズ */
+/* ===== ボール設定 ===== */
+
 const base=[18,26,36,48,62,78,100,125,160];
 const sizes=base.map(s=>Math.round(s*(isMobile?0.85:0.65)));
 
@@ -173,7 +206,6 @@ const todayKey="daily-"+new Date().toISOString().slice(0,10);
 let dailyHigh=localStorage.getItem(todayKey)||0;
 document.getElementById("dailyHigh").innerText=dailyHigh;
 
-/* ボール */
 function createBall(i,x,y,s=false){
   const r=sizes[i];
   const ball=Bodies.circle(x,y,r,{
@@ -205,7 +237,6 @@ function spawn(){
 }
 spawn();
 
-/* 移動制限 */
 function move(x){
   if(!currentBall||isGameOver)return;
   const min=centerX-containerWidth/2+30;
@@ -234,7 +265,6 @@ function drop(){
   }
 }
 
-/* 合体 */
 Events.on(engine,"collisionStart",e=>{
   e.pairs.forEach(p=>{
     const a=p.bodyA,b=p.bodyB;
@@ -264,7 +294,6 @@ Events.on(engine,"collisionStart",e=>{
 });
 </script>
 
-<!-- Firebase（TOP5） -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }

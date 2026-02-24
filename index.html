@@ -89,94 +89,91 @@ Today: <span id="dailyHigh">0</span>
 </div>
 
 <script>
-const {Engine,Render,Runner,World,Bodies,Body,Events}=Matter;
+const {Engine,Render,Runner,World,Bodies,Body,Events,Vertices} = Matter;
 
-const width=window.innerWidth;
-const height=document.documentElement.clientHeight;
-const isMobile=width<768;
+const width = window.innerWidth;
+const height = document.documentElement.clientHeight;
+const isMobile = width < 768;
 
-const engine=Engine.create();
-engine.world.gravity.y=1.05;
-engine.positionIterations=15;
-engine.velocityIterations=15;
+const engine = Engine.create();
+engine.world.gravity.y = 1.05;
+engine.positionIterations = 15;
+engine.velocityIterations = 15;
 
-const world=engine.world;
+const world = engine.world;
 
-const render=Render.create({
-  element:document.body,
-  engine:engine,
-  options:{
-    width:width,
-    height:height,
-    wireframes:false,
-    background:"transparent"
+const render = Render.create({
+  element: document.body,
+  engine: engine,
+  options: {
+    width: width,
+    height: height,
+    wireframes: false,
+    background: "transparent"
   }
 });
+
 Render.run(render);
-Runner.run(Runner.create(),engine);
+Runner.run(Runner.create(), engine);
 
-/* ===== 丸い容器 ===== */
+/* ===== U字型コンテナ（1パーツ） ===== */
 
-const containerWidth=isMobile?width*0.9:420;
-const containerHeight=isMobile?height*0.6:520;
+const containerWidth = isMobile ? width * 0.9 : 420;
+const containerHeight = isMobile ? height * 0.6 : 520;
 
-const centerX=width/2;
-const topY=height*0.15;
-const bottomY=topY+containerHeight;
+const centerX = width / 2;
+const topY = height * 0.15;
+const bottomY = topY + containerHeight;
 
-const wallThickness=40;
-const cornerRadius=40;
+const radius = 40;
+const segments = 20;
 
-/* 左壁 */
-const leftWall=Bodies.rectangle(
-  centerX-containerWidth/2,
-  bottomY-containerHeight/2,
-  wallThickness,
-  containerHeight-cornerRadius,
-  {isStatic:true,render:{visible:false}}
-);
+/* U字の頂点を作る */
+let points = [];
 
-/* 右壁 */
-const rightWall=Bodies.rectangle(
-  centerX+containerWidth/2,
-  bottomY-containerHeight/2,
-  wallThickness,
-  containerHeight-cornerRadius,
-  {isStatic:true,render:{visible:false}}
-);
+/* 左上 */
+points.push({x: -containerWidth/2, y: -containerHeight/2});
 
-/* 底 */
-const bottomWall=Bodies.rectangle(
+/* 左下まで */
+points.push({x: -containerWidth/2, y: containerHeight/2 - radius});
+
+/* 左下カーブ */
+for(let i=0;i<=segments;i++){
+  let angle = Math.PI - (Math.PI/2)*(i/segments);
+  points.push({
+    x: -containerWidth/2 + radius + Math.cos(angle)*radius,
+    y: containerHeight/2 - radius + Math.sin(angle)*radius
+  });
+}
+
+/* 底中央 */
+points.push({x: 0, y: containerHeight/2});
+
+/* 右下カーブ */
+for(let i=0;i<=segments;i++){
+  let angle = (Math.PI/2)*(i/segments);
+  points.push({
+    x: containerWidth/2 - radius + Math.cos(angle)*radius,
+    y: containerHeight/2 - radius + Math.sin(angle)*radius
+  });
+}
+
+/* 右上 */
+points.push({x: containerWidth/2, y: -containerHeight/2});
+
+/* コンテナ作成 */
+const container = Bodies.fromVertices(
   centerX,
-  bottomY+15,
-  containerWidth-cornerRadius*2,
-  60,
-  {isStatic:true,render:{visible:false}}
+  topY + containerHeight/2,
+  [points],
+  {
+    isStatic:true,
+    render:{visible:false}
+  },
+  true
 );
 
-/* 左下角 */
-const bottomLeftCorner=Bodies.circle(
-  centerX-containerWidth/2+cornerRadius,
-  bottomY-cornerRadius+15,
-  cornerRadius,
-  {isStatic:true,render:{visible:false}}
-);
-
-/* 右下角 */
-const bottomRightCorner=Bodies.circle(
-  centerX+containerWidth/2-cornerRadius,
-  bottomY-cornerRadius+15,
-  cornerRadius,
-  {isStatic:true,render:{visible:false}}
-);
-
-World.add(world,[
-  leftWall,
-  rightWall,
-  bottomWall,
-  bottomLeftCorner,
-  bottomRightCorner
-]);
+World.add(world, container);
 
 /* ===== ボール設定 ===== */
 
@@ -276,57 +273,8 @@ Events.on(engine,"collisionStart",e=>{
         World.add(world,createBall(n,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2));
         score+=(n+1)*5;
         document.getElementById("score").innerText=score;
-
-        if(score>highScore){
-          highScore=score;
-          localStorage.setItem("highScore",highScore);
-          document.getElementById("highScore").innerText=highScore;
-        }
-
-        if(score>dailyHigh){
-          dailyHigh=score;
-          localStorage.setItem(todayKey,dailyHigh);
-          document.getElementById("dailyHigh").innerText=dailyHigh;
-        }
       }
     }
-  });
-});
-</script>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }
-from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
-
-const firebaseConfig={
-  apiKey:"AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
-  authDomain:"shibainugame-1865a.firebaseapp.com",
-  databaseURL:"https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:"shibainugame-1865a",
-  storageBucket:"shibainugame-1865a.firebasestorage.app",
-  messagingSenderId:"278247707611",
-  appId:"1:278247707611:web:9a04085c0493fd2ee64dfe"
-};
-
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
-
-window.submitScore=function(){
-  const name=document.getElementById("playerName").value||"名無し";
-  push(ref(db,"ranking"),{name,score,time:Date.now()});
-};
-
-const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(5));
-
-onValue(rankingRef,(snapshot)=>{
-  const box=document.getElementById("ranking");
-  box.innerHTML="";
-  const data=[];
-  snapshot.forEach(c=>data.push(c.val()));
-  data.reverse();
-  data.forEach((item,i)=>{
-    box.innerHTML+=(i===0?"👑 ":""+(i+1)+"位 ")+item.name+" - "+item.score+"<br>";
   });
 });
 </script>

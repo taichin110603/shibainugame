@@ -3,40 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <title>犬スイカゲーム 🐶</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
-body,html{
+html,body{
   margin:0;
+  padding:0;
   overflow:hidden;
+  height:100vh;
   background:linear-gradient(#ffe8c7,#ffd6a5);
   font-family:sans-serif;
 }
 
 canvas{
+  display:block;
   touch-action:none;
 }
 
 /* スコア */
 #scoreBox{
   position:absolute;
-  top:15px;
+  top:10px;
   right:15px;
-  font-size:16px;
+  font-size:14px;
   z-index:10;
 }
 
 /* ランキング */
 #rankingBox{
   position:absolute;
-  bottom:15px;
-  left:15px;
-  width:230px;
-  font-size:13px;
+  bottom:10px;
+  left:10px;
+  width:200px;
+  font-size:12px;
   background:rgba(255,255,255,0.9);
-  padding:10px;
-  border-radius:10px;
+  padding:8px;
+  border-radius:8px;
   z-index:10;
 }
 
@@ -54,7 +60,7 @@ canvas{
 }
 
 button{
-  padding:8px 16px;
+  padding:8px 14px;
   border:none;
   border-radius:6px;
   background:#ff595e;
@@ -71,7 +77,7 @@ Today: <span id="dailyHigh">0</span>
 </div>
 
 <div id="rankingBox">
-<b>🌍 世界ランキング TOP5</b>
+<b>🌍 TOP5</b>
 <div id="ranking"></div>
 </div>
 
@@ -87,45 +93,62 @@ Today: <span id="dailyHigh">0</span>
 <script>
 const {Engine,Render,Runner,World,Bodies,Body,Events}=Matter;
 
+/* 正しい高さ取得 */
 const width=window.innerWidth;
-const height=window.innerHeight;
+const height=document.documentElement.clientHeight;
+
 const isMobile=width<768;
 
 const engine=Engine.create();
-engine.world.gravity.y=1.1;
+engine.world.gravity.y=1.05;
 
-/* 🔥 物理精度最大 */
-engine.positionIterations=20;
-engine.velocityIterations=20;
-engine.constraintIterations=6;
+/* 物理安定 */
+engine.positionIterations=15;
+engine.velocityIterations=15;
 
 const world=engine.world;
 
 const render=Render.create({
   element:document.body,
   engine:engine,
-  options:{width,height,wireframes:false,background:"transparent"}
+  options:{
+    width:width,
+    height:height,
+    wireframes:false,
+    background:"transparent"
+  }
 });
+
 Render.run(render);
 Runner.run(Runner.create(),engine);
 
-/* 容器 */
+/* 容器サイズ */
 const containerWidth=isMobile?width*0.9:420;
-const containerHeight=isMobile?height*0.65:520;
+const containerHeight=isMobile?height*0.6:520;
+
 const centerX=width/2;
 const topY=height*0.15;
 const bottomY=topY+containerHeight;
 
-/* 🔥 壁を超厚く */
+/* 🔥 見えない壁（描画透明） */
 World.add(world,[
-  Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,60,containerHeight,{isStatic:true}),
-  Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,60,containerHeight,{isStatic:true}),
-  Bodies.rectangle(centerX,bottomY+20,containerWidth,80,{isStatic:true}) /* 底埋め込み */
+  Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{
+    isStatic:true,
+    render:{visible:false}
+  }),
+  Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{
+    isStatic:true,
+    render:{visible:false}
+  }),
+  Bodies.rectangle(centerX,bottomY+15,containerWidth,50,{
+    isStatic:true,
+    render:{visible:false}
+  })
 ]);
 
 /* サイズ */
 const base=[18,26,36,48,62,78,100,125,160];
-const sizes=base.map(s=>Math.round(s*(isMobile?0.8:0.65)));
+const sizes=base.map(s=>Math.round(s*(isMobile?0.85:0.65)));
 
 const images=[
 "images/inugame_size1.png",
@@ -143,7 +166,6 @@ let currentBall=null;
 let score=0;
 let isGameOver=false;
 
-/* ローカル保存 */
 let highScore=localStorage.getItem("highScore")||0;
 document.getElementById("highScore").innerText=highScore;
 
@@ -151,17 +173,18 @@ const todayKey="daily-"+new Date().toISOString().slice(0,10);
 let dailyHigh=localStorage.getItem(todayKey)||0;
 document.getElementById("dailyHigh").innerText=dailyHigh;
 
-/* ボール生成 */
+/* ボール */
 function createBall(i,x,y,s=false){
   const r=sizes[i];
   const ball=Bodies.circle(x,y,r,{
     restitution:0.1,
     friction:0.3,
-    frictionAir:0.03,
+    frictionAir:0.02,
     bullet:true,
     isStatic:s,
     render:{sprite:{texture:images[i],xScale:1,yScale:1}}
   });
+
   const img=new Image();
   img.src=images[i];
   img.onload=()=>{
@@ -169,11 +192,11 @@ function createBall(i,x,y,s=false){
     ball.render.sprite.xScale=sc;
     ball.render.sprite.yScale=sc;
   };
+
   ball.sizeIndex=i;
   return ball;
 }
 
-/* スポーン */
 function spawn(){
   if(isGameOver)return;
   const i=Math.floor(Math.random()*3);
@@ -185,8 +208,8 @@ spawn();
 /* 移動制限 */
 function move(x){
   if(!currentBall||isGameOver)return;
-  const min=centerX-containerWidth/2+40;
-  const max=centerX+containerWidth/2-40;
+  const min=centerX-containerWidth/2+30;
+  const max=centerX+containerWidth/2-30;
   const fixed=Math.max(min,Math.min(max,x));
   Body.setPosition(currentBall,{x:fixed,y:topY-40});
 }
@@ -197,6 +220,7 @@ window.addEventListener("click",drop);
 window.addEventListener("touchmove",e=>{
   move(e.touches[0].clientX);
 });
+
 window.addEventListener("touchstart",e=>{
   e.preventDefault();
   drop();
@@ -240,7 +264,7 @@ Events.on(engine,"collisionStart",e=>{
 });
 </script>
 
-<!-- Firebase -->
+<!-- Firebase（TOP5） -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }

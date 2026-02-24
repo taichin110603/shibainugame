@@ -7,51 +7,52 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
-body, html {
+body,html{
   margin:0;
   overflow:hidden;
-  width:100%;
-  height:100%;
   background:linear-gradient(#ffe8c7,#ffd6a5);
   font-family:sans-serif;
 }
+
+/* スコア右上 */
 #scoreBox{
   position:absolute;
-  top:20px;
-  right:20px;
-  font-size:18px;
+  top:15px;
+  right:15px;
+  font-size:16px;
   z-index:10;
 }
+
+/* ランキング左下に移動 */
 #rankingBox{
   position:absolute;
-  top:20px;
-  left:20px;
-  width:230px;
-  font-size:14px;
-  line-height:1.6em;
-  z-index:10;
-  background:rgba(255,255,255,0.8);
+  bottom:15px;
+  left:15px;
+  width:220px;
+  font-size:13px;
+  background:rgba(255,255,255,0.85);
   padding:10px;
   border-radius:10px;
+  z-index:10;
 }
+
 #gameOver{
   position:absolute;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  text-align:center;
-  display:none;
-  z-index:20;
   background:white;
   padding:20px;
   border-radius:10px;
+  text-align:center;
+  display:none;
+  z-index:20;
 }
+
 button{
-  padding:8px 18px;
-  font-size:16px;
+  padding:8px 16px;
   border:none;
   border-radius:6px;
-  cursor:pointer;
   background:#ff595e;
   color:white;
 }
@@ -60,47 +61,49 @@ button{
 <body>
 
 <div id="scoreBox">
-  Score : <span id="score">0</span><br>
-  High : <span id="highScore">0</span>
+Score: <span id="score">0</span><br>
+High: <span id="highScore">0</span>
 </div>
 
 <div id="rankingBox">
-  <b>🌍 世界ランキング TOP10</b>
-  <div id="ranking"></div>
+<b>🌍 世界ランキング TOP10</b>
+<div id="ranking"></div>
 </div>
 
 <div id="gameOver">
-  <h1>GAME OVER</h1>
-  <input id="playerName" placeholder="名前を入力">
-  <br><br>
-  <button onclick="submitScore()">スコア送信</button>
-  <br><br>
-  <button onclick="location.reload()">Retry</button>
+<h2>GAME OVER</h2>
+<input id="playerName" placeholder="名前">
+<br><br>
+<button onclick="submitScore()">送信</button>
+<br><br>
+<button onclick="location.reload()">Retry</button>
 </div>
 
 <script>
-const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
+const {Engine,Render,Runner,World,Bodies,Body,Events}=Matter;
 
-const isMobile = window.innerWidth < 768;
-const width = window.innerWidth;
-const height = window.innerHeight;
+const width=window.innerWidth;
+const height=window.innerHeight;
+const isMobile=width<768;
 
-const engine = Engine.create();
-engine.world.gravity.y = 1;
-const world = engine.world;
+const engine=Engine.create();
+engine.world.gravity.y=1;
+const world=engine.world;
 
-const render = Render.create({
-  element: document.body,
-  engine: engine,
-  options:{ width: width, height: height, wireframes:false, background:"transparent"}
+const render=Render.create({
+  element:document.body,
+  engine:engine,
+  options:{width,height,wireframes:false,background:"transparent"}
 });
 Render.run(render);
-Runner.run(Runner.create(), engine);
+Runner.run(Runner.create(),engine);
 
-const containerWidth = isMobile ? width*0.9 : 420;
-const containerHeight = isMobile ? height*0.6 : 520;
-const centerX = width/2;
-const bottomY = height*0.9;
+/* 容器 */
+const containerWidth=isMobile?width*0.9:420;
+const containerHeight=isMobile?height*0.65:520;
+const centerX=width/2;
+const topY=height*0.15;
+const bottomY=topY+containerHeight;
 
 World.add(world,[
   Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,10,containerHeight,{isStatic:true}),
@@ -108,10 +111,11 @@ World.add(world,[
   Bodies.rectangle(centerX,bottomY,containerWidth,10,{isStatic:true})
 ]);
 
-const baseSizes=[18,26,36,48,62,78,100,125,160];
-const sizes=baseSizes.map(s=>Math.round(s*(isMobile?0.75:0.6)));
+/* サイズ */
+const base=[18,26,36,48,62,78,100,125,160];
+const sizes=base.map(s=>Math.round(s*(isMobile?0.8:0.65)));
 
-const dogImages=[
+const images=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
 "images/inugame_size3.png",
@@ -123,46 +127,79 @@ const dogImages=[
 "images/inugame_size9.png"
 ];
 
-let currentBall=null, score=0, isGameOver=false;
+let currentBall=null;
+let score=0;
+let isGameOver=false;
 let highScore=localStorage.getItem("highScore")||0;
 document.getElementById("highScore").innerText=highScore;
 
+/* ボール生成 */
 function createBall(i,x,y,s=false){
   const r=sizes[i];
-  const ball=Bodies.circle(x,y,r,{isStatic:s,render:{sprite:{texture:dogImages[i],xScale:1,yScale:1}}});
+  const ball=Bodies.circle(x,y,r,{
+    restitution:0.15,
+    friction:0.2,
+    isStatic:s,
+    render:{sprite:{texture:images[i],xScale:1,yScale:1}}
+  });
   const img=new Image();
-  img.src=dogImages[i];
-  img.onload=()=>{const sc=(r*2)/Math.max(img.width,img.height);ball.render.sprite.xScale=sc;ball.render.sprite.yScale=sc;}
+  img.src=images[i];
+  img.onload=()=>{
+    const sc=(r*2)/Math.max(img.width,img.height);
+    ball.render.sprite.xScale=sc;
+    ball.render.sprite.yScale=sc;
+  };
   ball.sizeIndex=i;
   return ball;
 }
 
-function spawnBall(){
+/* スポーン */
+function spawn(){
   if(isGameOver)return;
   const i=Math.floor(Math.random()*3);
-  currentBall=createBall(i,centerX,100,true);
+  currentBall=createBall(i,centerX,topY-40,true);
   World.add(world,currentBall);
 }
-spawnBall();
+spawn();
 
-window.addEventListener("mousemove",e=>{
-  if(currentBall&&!isGameOver)Body.setPosition(currentBall,{x:e.clientX,y:100});
+/* 横移動制限（容器の中だけ） */
+function move(x){
+  if(!currentBall||isGameOver)return;
+
+  const min=centerX-containerWidth/2+30;
+  const max=centerX+containerWidth/2-30;
+
+  const fixedX=Math.max(min,Math.min(max,x));
+  Body.setPosition(currentBall,{x:fixedX,y:topY-40});
+}
+
+/* PC */
+window.addEventListener("mousemove",e=>move(e.clientX));
+window.addEventListener("click",drop);
+
+/* スマホ */
+window.addEventListener("touchmove",e=>{
+  move(e.touches[0].clientX);
 });
-window.addEventListener("click",()=>{
+window.addEventListener("touchend",drop);
+
+function drop(){
   if(currentBall&&!isGameOver){
     Body.setStatic(currentBall,false);
     currentBall=null;
-    setTimeout(spawnBall,400);
+    setTimeout(spawn,400);
   }
-});
+}
 
+/* 合体 */
 Events.on(engine,"collisionStart",e=>{
   e.pairs.forEach(p=>{
     const a=p.bodyA,b=p.bodyB;
     if(a.sizeIndex!==undefined&&b.sizeIndex!==undefined&&a.sizeIndex===b.sizeIndex){
       const n=a.sizeIndex+1;
       if(n<sizes.length){
-        World.remove(world,a);World.remove(world,b);
+        World.remove(world,a);
+        World.remove(world,b);
         World.add(world,createBall(n,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2));
         score+=(n+1)*5;
         document.getElementById("score").innerText=score;
@@ -176,6 +213,7 @@ Events.on(engine,"collisionStart",e=>{
   });
 });
 
+/* ゲームオーバー */
 Events.on(engine,"afterUpdate",()=>{
   if(isGameOver)return;
   world.bodies.forEach(b=>{
@@ -187,6 +225,7 @@ Events.on(engine,"afterUpdate",()=>{
 });
 </script>
 
+<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }
@@ -211,6 +250,7 @@ window.submitScore=function(){
 };
 
 const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(10));
+
 onValue(rankingRef,(snapshot)=>{
   const box=document.getElementById("ranking");
   box.innerHTML="";

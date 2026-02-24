@@ -18,42 +18,48 @@ body, html {
 
 #scoreBox{
   position:absolute;
-  top:22%;
-  right:8%;
-  font-size:20px;
+  top:20px;
+  right:20px;
+  font-size:18px;
   z-index:10;
 }
 
 #rankingBox{
   position:absolute;
-  top:5%;
-  left:8%;
-  width:220px;
-  font-size:16px;
+  top:20px;
+  left:20px;
+  width:230px;
+  font-size:14px;
   line-height:1.6em;
   z-index:10;
+  background:rgba(255,255,255,0.7);
+  padding:10px;
+  border-radius:10px;
 }
 
 #gameOver{
   position:absolute;
-  top:40%;
+  top:50%;
   left:50%;
   transform:translate(-50%,-50%);
   text-align:center;
   display:none;
   z-index:20;
+  background:white;
+  padding:20px;
+  border-radius:10px;
 }
 
 #gameOver h1{
   color:red;
-  font-size:50px;
+  font-size:40px;
 }
 
-#retryBtn{
-  padding:10px 25px;
-  font-size:18px;
+button{
+  padding:8px 18px;
+  font-size:16px;
   border:none;
-  border-radius:8px;
+  border-radius:6px;
   cursor:pointer;
   background:#ff595e;
   color:white;
@@ -63,46 +69,35 @@ body, html {
 <body>
 
 <div id="scoreBox">
-  <div>Score : <span id="score">0</span></div>
-  <div>High : <span id="highScore">0</span></div>
+  Score : <span id="score">0</span><br>
+  High : <span id="highScore">0</span>
 </div>
 
 <div id="rankingBox">
-  <div><b>本日のランキング</b></div>
+  <b>🌍 世界ランキング TOP10</b>
   <div id="ranking"></div>
 </div>
 
 <div id="gameOver">
   <h1>GAME OVER</h1>
-  <button id="retryBtn">Retry</button>
+  <input id="playerName" placeholder="名前を入力">
+  <br><br>
+  <button onclick="submitScore()">スコア送信</button>
+  <br><br>
+  <button onclick="location.reload()">Retry</button>
 </div>
 
 <script>
 const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
 
-// スマホ判定
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
-// 画面サイズ
+const isMobile = window.innerWidth < 768;
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-// 容器サイズ・位置
-const containerWidth  = isMobile ? Math.min(width*0.85, 400) : 420;
-const containerHeight = isMobile ? Math.min(height*0.55, 550) : 520;
-const containerTopY = isMobile ? 250 : height*0.1;
-const bottomY = containerTopY + containerHeight;
-const wallThickness = 10;
-const centerX = width/2;
-
-// Matter.js エンジン
 const engine = Engine.create();
 engine.world.gravity.y = 1;
-engine.positionIterations = 15;
-engine.velocityIterations = 15;
 const world = engine.world;
 
-// レンダラー
 const render = Render.create({
   element: document.body,
   engine: engine,
@@ -116,203 +111,165 @@ const render = Render.create({
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-//////////////////////////////////////////////////
-// 容器
-//////////////////////////////////////////////////
-const leftWall = Bodies.rectangle(centerX - containerWidth/2, containerTopY + containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{fillStyle:"#000"}});
-const rightWall = Bodies.rectangle(centerX + containerWidth/2, containerTopY + containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{fillStyle:"#000"}});
-const floor = Bodies.rectangle(centerX, bottomY, containerWidth, wallThickness, {isStatic:true, render:{fillStyle:"#000"}});
+// 容器サイズ
+const containerWidth = isMobile ? width*0.9 : 420;
+const containerHeight = isMobile ? height*0.6 : 520;
+const centerX = width/2;
+const bottomY = height*0.9;
+
+const leftWall = Bodies.rectangle(centerX-containerWidth/2, bottomY-containerHeight/2, 10, containerHeight,{isStatic:true});
+const rightWall = Bodies.rectangle(centerX+containerWidth/2, bottomY-containerHeight/2, 10, containerHeight,{isStatic:true});
+const floor = Bodies.rectangle(centerX, bottomY, containerWidth, 10,{isStatic:true});
 World.add(world,[leftWall,rightWall,floor]);
 
-//////////////////////////////////////////////////
-// ボール画像・サイズ
-//////////////////////////////////////////////////
-const dogImages = [
-  "images/inugame_size1.png",
-  "images/inugame_size2.png",
-  "images/inugame_size3.png",
-  "images/inugame_size4.png",
-  "images/inugame_size5.png",
-  "images/inugame_size6.png",
-  "images/inugame_size7.png",
-  "images/inugame_size8.png",
-  "images/inugame_size9.png"
-];
-
-const baseSizes = [18,26,36,48,62,78,100,125,160];
-const sizeMultiplier = isMobile ? 0.8 : 0.85; // 少し小さめ
+// サイズ調整（PCとスマホで変える）
+const baseSizes=[18,26,36,48,62,78,100,125,160];
+const sizeMultiplier = isMobile ? 0.75 : 0.6;
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
-//////////////////////////////////////////////////
-// ゲーム変数
-//////////////////////////////////////////////////
-let currentBall = null;
-let score = 0;
-let highScore = localStorage.getItem("highScore") || 0;
-let isGameOver = false;
-document.getElementById("highScore").innerText = highScore;
+const dogImages=[
+"images/inugame_size1.png",
+"images/inugame_size2.png",
+"images/inugame_size3.png",
+"images/inugame_size4.png",
+"images/inugame_size5.png",
+"images/inugame_size6.png",
+"images/inugame_size7.png",
+"images/inugame_size8.png",
+"images/inugame_size9.png"
+];
 
-//////////////////////////////////////////////////
-// ボール生成
-//////////////////////////////////////////////////
-function createBall(sizeIndex, x, y, isStatic=false){
-  const radius = sizes[sizeIndex];
-  const texturePath = dogImages[sizeIndex];
-  const density = sizeIndex===0 ? (isMobile?0.006:0.003) : 0.002;
+let currentBall=null;
+let score=0;
+let highScore=localStorage.getItem("highScore")||0;
+let isGameOver=false;
+document.getElementById("highScore").innerText=highScore;
 
-  const ball = Bodies.circle(x,y,radius,{
+function createBall(sizeIndex,x,y,isStatic=false){
+  const radius=sizes[sizeIndex];
+  const texturePath=dogImages[sizeIndex];
+
+  const ball=Bodies.circle(x,y,radius,{
     restitution:0.15,
     friction:0.2,
-    density:density,
     isStatic:isStatic,
-    render:{ sprite:{ texture:texturePath, xScale:1, yScale:1 }}
+    render:{sprite:{texture:texturePath,xScale:1,yScale:1}}
   });
 
-  const img = new Image();
-  img.src = texturePath;
-  img.onload = function(){
-    const scale = (radius*2)/Math.max(img.width,img.height);
-    ball.render.sprite.xScale = scale;
-    ball.render.sprite.yScale = scale;
+  const img=new Image();
+  img.src=texturePath;
+  img.onload=function(){
+    const scale=(radius*2)/Math.max(img.width,img.height);
+    ball.render.sprite.xScale=scale;
+    ball.render.sprite.yScale=scale;
   };
 
-  ball.sizeIndex = sizeIndex;
+  ball.sizeIndex=sizeIndex;
   return ball;
 }
 
-//////////////////////////////////////////////////
-// ボールスポーン
-//////////////////////////////////////////////////
 function spawnBall(){
   if(isGameOver) return;
-  const sizeIndex = Math.floor(Math.random()*3);
-  const startY = containerTopY - sizes[sizeIndex] - 5; // 容器上端の少し上
-  currentBall = createBall(sizeIndex, centerX, startY, true);
+  const sizeIndex=Math.floor(Math.random()*3);
+  currentBall=createBall(sizeIndex,centerX,100,true);
   World.add(world,currentBall);
 }
 spawnBall();
 
-//////////////////////////////////////////////////
-// マウス・タッチ操作
-//////////////////////////////////////////////////
-function moveBall(clientX){
-  if(!currentBall || isGameOver) return;
-  const x = Math.max(centerX - containerWidth/2 + 20, Math.min(clientX, centerX + containerWidth/2 - 20));
-  Body.setPosition(currentBall,{x:x,y:currentBall.position.y});
-}
-window.addEventListener("mousemove", e => moveBall(e.clientX));
-window.addEventListener("click", shootBall);
-
-window.addEventListener("touchstart", e => {
-  if(e.target.id==="retryBtn") return;
-  if(e.touches.length>0) moveBall(e.touches[0].clientX);
-});
-window.addEventListener("touchmove", e => {
-  if(e.target.id==="retryBtn") return;
-  if(e.touches.length>0) moveBall(e.touches[0].clientX);
-});
-window.addEventListener("touchend", e => {
-  if(e.target.id==="retryBtn") return;
-  shootBall();
+window.addEventListener("mousemove",e=>{
+  if(currentBall && !isGameOver){
+    Body.setPosition(currentBall,{x:e.clientX,y:100});
+  }
 });
 
-//////////////////////////////////////////////////
-// ボール落下
-//////////////////////////////////////////////////
-function shootBall(){
-  if(isGameOver || !currentBall) return;
-  Body.setStatic(currentBall,false);
-  currentBall=null;
-  setTimeout(spawnBall,350);
-}
+window.addEventListener("click",()=>{
+  if(currentBall && !isGameOver){
+    Body.setStatic(currentBall,false);
+    currentBall=null;
+    setTimeout(spawnBall,400);
+  }
+});
 
-//////////////////////////////////////////////////
-// 合体・消去処理
-//////////////////////////////////////////////////
-Events.on(engine,"collisionStart", event => {
-  event.pairs.forEach(pair => {
-    const a = pair.bodyA;
-    const b = pair.bodyB;
-
-    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a!==currentBall && b!==currentBall){
-      if(a.sizeIndex === b.sizeIndex){
-        const newSize = (a.sizeIndex<sizes.length-1)?a.sizeIndex+1:sizes.length-1;
-
-        // 一番大きいサイズ同士なら消去
-        if(a.sizeIndex === sizes.length-1 && b.sizeIndex === sizes.length-1){
-          World.remove(world,a);
-          World.remove(world,b);
-          return;
-        }
-
-        const newBall = createBall(
-          newSize,
-          (a.position.x + b.position.x)/2,
-          (a.position.y + b.position.y)/2
-        );
+Events.on(engine,"collisionStart",event=>{
+  event.pairs.forEach(pair=>{
+    const a=pair.bodyA;
+    const b=pair.bodyB;
+    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a.sizeIndex===b.sizeIndex){
+      const newSize=a.sizeIndex+1;
+      if(newSize<sizes.length){
+        const newBall=createBall(newSize,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2);
         World.remove(world,a);
         World.remove(world,b);
         World.add(world,newBall);
-
-        score += (newSize + 1)*5;
-        document.getElementById("score").innerText = score;
+        score+=(newSize+1)*5;
+        document.getElementById("score").innerText=score;
 
         if(score>highScore){
-          highScore = score;
+          highScore=score;
           localStorage.setItem("highScore",highScore);
-          document.getElementById("highScore").innerText = highScore;
+          document.getElementById("highScore").innerText=highScore;
         }
       }
     }
   });
 });
 
-//////////////////////////////////////////////////
-// ゲームオーバー
-//////////////////////////////////////////////////
 Events.on(engine,"afterUpdate",()=>{
   if(isGameOver) return;
   world.bodies.forEach(body=>{
     if(body.sizeIndex!==undefined && body.position.y>height+200){
-      gameOver();
+      isGameOver=true;
+      document.getElementById("gameOver").style.display="block";
     }
   });
 });
-function gameOver(){
-  if(isGameOver) return;
-  isGameOver=true;
-  document.getElementById("gameOver").style.display="block";
-  updateRanking();
-}
-
-//////////////////////////////////////////////////
-// リトライ
-//////////////////////////////////////////////////
-document.getElementById("retryBtn").addEventListener("click", e=>{
-  e.stopPropagation();
-  world.bodies.slice().forEach(body=>{if(body.sizeIndex!==undefined)World.remove(world,body);});
-  score=0; document.getElementById("score").innerText=0;
-  isGameOver=false;
-  document.getElementById("gameOver").style.display="none";
-  spawnBall();
-});
-
-//////////////////////////////////////////////////
-// ランキング
-//////////////////////////////////////////////////
-function updateRanking(){
-  const today = new Date().toISOString().slice(0,10);
-  const key = "ranking_"+today;
-  let ranking = JSON.parse(localStorage.getItem(key)||"[]");
-  ranking.push(score);
-  ranking.sort((a,b)=>b-a);
-  ranking=ranking.slice(0,3);
-  localStorage.setItem(key,JSON.stringify(ranking));
-  const box = document.getElementById("ranking");
-  box.innerHTML="";
-  ranking.forEach((s,i)=>{ box.innerHTML += `${i+1}位 : ${s}<br>`; });
-}
-updateRanking();
 </script>
+
+<!-- 🔥 世界ランキング（Firebase） -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }
+from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
+  authDomain:"shibainugame-1865a.firebaseapp.com",
+  databaseURL:"https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"shibainugame-1865a",
+  storageBucket:"shibainugame-1865a.firebasestorage.app",
+  messagingSenderId:"278247707611",
+  appId:"1:278247707611:web:9a04085c0493fd2ee64dfe"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+
+window.submitScore=function(){
+  const name=document.getElementById("playerName").value||"名無し";
+  push(ref(db,"ranking"),{
+    name:name,
+    score:score,
+    time:Date.now()
+  });
+};
+
+const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(10));
+
+onValue(rankingRef,(snapshot)=>{
+  const box=document.getElementById("ranking");
+  box.innerHTML="";
+  const data=[];
+  snapshot.forEach(child=>data.push(child.val()));
+  data.reverse();
+  data.forEach((item,i)=>{
+    if(i===0){
+      box.innerHTML+="🏆 <span style='color:gold'>"+item.name+" - "+item.score+"</span><br>";
+    }else{
+      box.innerHTML+=(i+1)+"位 "+item.name+" - "+item.score+"<br>";
+    }
+  });
+});
+</script>
+
 </body>
 </html>

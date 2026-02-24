@@ -15,7 +15,6 @@ body, html {
   background:linear-gradient(#ffe8c7,#ffd6a5);
   font-family:sans-serif;
 }
-
 #scoreBox{
   position:absolute;
   top:20px;
@@ -23,7 +22,6 @@ body, html {
   font-size:18px;
   z-index:10;
 }
-
 #rankingBox{
   position:absolute;
   top:20px;
@@ -32,11 +30,10 @@ body, html {
   font-size:14px;
   line-height:1.6em;
   z-index:10;
-  background:rgba(255,255,255,0.7);
+  background:rgba(255,255,255,0.8);
   padding:10px;
   border-radius:10px;
 }
-
 #gameOver{
   position:absolute;
   top:50%;
@@ -49,12 +46,6 @@ body, html {
   padding:20px;
   border-radius:10px;
 }
-
-#gameOver h1{
-  color:red;
-  font-size:40px;
-}
-
 button{
   padding:8px 18px;
   font-size:16px;
@@ -101,31 +92,24 @@ const world = engine.world;
 const render = Render.create({
   element: document.body,
   engine: engine,
-  options:{
-    width: width,
-    height: height,
-    wireframes:false,
-    background:"transparent"
-  }
+  options:{ width: width, height: height, wireframes:false, background:"transparent"}
 });
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-// 容器サイズ
 const containerWidth = isMobile ? width*0.9 : 420;
 const containerHeight = isMobile ? height*0.6 : 520;
 const centerX = width/2;
 const bottomY = height*0.9;
 
-const leftWall = Bodies.rectangle(centerX-containerWidth/2, bottomY-containerHeight/2, 10, containerHeight,{isStatic:true});
-const rightWall = Bodies.rectangle(centerX+containerWidth/2, bottomY-containerHeight/2, 10, containerHeight,{isStatic:true});
-const floor = Bodies.rectangle(centerX, bottomY, containerWidth, 10,{isStatic:true});
-World.add(world,[leftWall,rightWall,floor]);
+World.add(world,[
+  Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,10,containerHeight,{isStatic:true}),
+  Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,10,containerHeight,{isStatic:true}),
+  Bodies.rectangle(centerX,bottomY,containerWidth,10,{isStatic:true})
+]);
 
-// サイズ調整（PCとスマホで変える）
 const baseSizes=[18,26,36,48,62,78,100,125,160];
-const sizeMultiplier = isMobile ? 0.75 : 0.6;
-const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
+const sizes=baseSizes.map(s=>Math.round(s*(isMobile?0.75:0.6)));
 
 const dogImages=[
 "images/inugame_size1.png",
@@ -139,71 +123,49 @@ const dogImages=[
 "images/inugame_size9.png"
 ];
 
-let currentBall=null;
-let score=0;
+let currentBall=null, score=0, isGameOver=false;
 let highScore=localStorage.getItem("highScore")||0;
-let isGameOver=false;
 document.getElementById("highScore").innerText=highScore;
 
-function createBall(sizeIndex,x,y,isStatic=false){
-  const radius=sizes[sizeIndex];
-  const texturePath=dogImages[sizeIndex];
-
-  const ball=Bodies.circle(x,y,radius,{
-    restitution:0.15,
-    friction:0.2,
-    isStatic:isStatic,
-    render:{sprite:{texture:texturePath,xScale:1,yScale:1}}
-  });
-
+function createBall(i,x,y,s=false){
+  const r=sizes[i];
+  const ball=Bodies.circle(x,y,r,{isStatic:s,render:{sprite:{texture:dogImages[i],xScale:1,yScale:1}}});
   const img=new Image();
-  img.src=texturePath;
-  img.onload=function(){
-    const scale=(radius*2)/Math.max(img.width,img.height);
-    ball.render.sprite.xScale=scale;
-    ball.render.sprite.yScale=scale;
-  };
-
-  ball.sizeIndex=sizeIndex;
+  img.src=dogImages[i];
+  img.onload=()=>{const sc=(r*2)/Math.max(img.width,img.height);ball.render.sprite.xScale=sc;ball.render.sprite.yScale=sc;}
+  ball.sizeIndex=i;
   return ball;
 }
 
 function spawnBall(){
-  if(isGameOver) return;
-  const sizeIndex=Math.floor(Math.random()*3);
-  currentBall=createBall(sizeIndex,centerX,100,true);
+  if(isGameOver)return;
+  const i=Math.floor(Math.random()*3);
+  currentBall=createBall(i,centerX,100,true);
   World.add(world,currentBall);
 }
 spawnBall();
 
 window.addEventListener("mousemove",e=>{
-  if(currentBall && !isGameOver){
-    Body.setPosition(currentBall,{x:e.clientX,y:100});
-  }
+  if(currentBall&&!isGameOver)Body.setPosition(currentBall,{x:e.clientX,y:100});
 });
-
 window.addEventListener("click",()=>{
-  if(currentBall && !isGameOver){
+  if(currentBall&&!isGameOver){
     Body.setStatic(currentBall,false);
     currentBall=null;
     setTimeout(spawnBall,400);
   }
 });
 
-Events.on(engine,"collisionStart",event=>{
-  event.pairs.forEach(pair=>{
-    const a=pair.bodyA;
-    const b=pair.bodyB;
-    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a.sizeIndex===b.sizeIndex){
-      const newSize=a.sizeIndex+1;
-      if(newSize<sizes.length){
-        const newBall=createBall(newSize,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2);
-        World.remove(world,a);
-        World.remove(world,b);
-        World.add(world,newBall);
-        score+=(newSize+1)*5;
+Events.on(engine,"collisionStart",e=>{
+  e.pairs.forEach(p=>{
+    const a=p.bodyA,b=p.bodyB;
+    if(a.sizeIndex!==undefined&&b.sizeIndex!==undefined&&a.sizeIndex===b.sizeIndex){
+      const n=a.sizeIndex+1;
+      if(n<sizes.length){
+        World.remove(world,a);World.remove(world,b);
+        World.add(world,createBall(n,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2));
+        score+=(n+1)*5;
         document.getElementById("score").innerText=score;
-
         if(score>highScore){
           highScore=score;
           localStorage.setItem("highScore",highScore);
@@ -215,9 +177,9 @@ Events.on(engine,"collisionStart",event=>{
 });
 
 Events.on(engine,"afterUpdate",()=>{
-  if(isGameOver) return;
-  world.bodies.forEach(body=>{
-    if(body.sizeIndex!==undefined && body.position.y>height+200){
+  if(isGameOver)return;
+  world.bodies.forEach(b=>{
+    if(b.sizeIndex!==undefined&&b.position.y>height+200){
       isGameOver=true;
       document.getElementById("gameOver").style.display="block";
     }
@@ -225,7 +187,6 @@ Events.on(engine,"afterUpdate",()=>{
 });
 </script>
 
-<!-- 🔥 世界ランキング（Firebase） -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }
@@ -246,27 +207,18 @@ const db=getDatabase(app);
 
 window.submitScore=function(){
   const name=document.getElementById("playerName").value||"名無し";
-  push(ref(db,"ranking"),{
-    name:name,
-    score:score,
-    time:Date.now()
-  });
+  push(ref(db,"ranking"),{name,score,time:Date.now()});
 };
 
 const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(10));
-
 onValue(rankingRef,(snapshot)=>{
   const box=document.getElementById("ranking");
   box.innerHTML="";
   const data=[];
-  snapshot.forEach(child=>data.push(child.val()));
+  snapshot.forEach(c=>data.push(c.val()));
   data.reverse();
   data.forEach((item,i)=>{
-    if(i===0){
-      box.innerHTML+="🏆 <span style='color:gold'>"+item.name+" - "+item.score+"</span><br>";
-    }else{
-      box.innerHTML+=(i+1)+"位 "+item.name+" - "+item.score+"<br>";
-    }
+    box.innerHTML+=(i===0?"🏆 ":""+(i+1)+"位 ")+item.name+" - "+item.score+"<br>";
   });
 });
 </script>

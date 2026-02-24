@@ -70,8 +70,7 @@ button{
 
 <div id="scoreBox">
 Score: <span id="score">0</span><br>
-High: <span id="highScore">0</span><br>
-Today: <span id="dailyHigh">0</span>
+High: <span id="highScore">0</span>
 </div>
 
 <div id="rankingBox">
@@ -81,15 +80,11 @@ Today: <span id="dailyHigh">0</span>
 
 <div id="gameOver">
 <h2>GAME OVER</h2>
-<input id="playerName" placeholder="名前">
-<br><br>
-<button onclick="submitScore()">送信</button>
-<br><br>
 <button onclick="location.reload()">Retry</button>
 </div>
 
 <script>
-const {Engine,Render,Runner,World,Bodies,Body,Events,Vertices} = Matter;
+const {Engine,Render,Runner,World,Bodies,Body,Events} = Matter;
 
 const width = window.innerWidth;
 const height = document.documentElement.clientHeight;
@@ -105,137 +100,112 @@ const world = engine.world;
 const render = Render.create({
   element: document.body,
   engine: engine,
-  options: {
-    width: width,
-    height: height,
-    wireframes: false,
-    background: "transparent"
+  options:{
+    width:width,
+    height:height,
+    wireframes:false,
+    background:"transparent"
   }
 });
 
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-/* ===== U字型コンテナ（1パーツ） ===== */
+/* ===== 容器サイズ ===== */
 
-const containerWidth = isMobile ? width * 0.9 : 420;
-const containerHeight = isMobile ? height * 0.6 : 520;
+const containerWidth = isMobile ? width*0.9 : 420;
+const containerHeight = isMobile ? height*0.6 : 520;
 
-const centerX = width / 2;
-const topY = height * 0.15;
+const centerX = width/2;
+const topY = height*0.15;
 const bottomY = topY + containerHeight;
 
-const radius = 40;
-const segments = 20;
+const wallThickness = 40;
+const cornerRadius = 40;
 
-/* U字の頂点を作る */
-let points = [];
+/* ===== 物理用の見えない壁 ===== */
 
-/* 左上 */
-points.push({x: -containerWidth/2, y: -containerHeight/2});
-
-/* 左下まで */
-points.push({x: -containerWidth/2, y: containerHeight/2 - radius});
-
-/* 左下カーブ */
-for(let i=0;i<=segments;i++){
-  let angle = Math.PI - (Math.PI/2)*(i/segments);
-  points.push({
-    x: -containerWidth/2 + radius + Math.cos(angle)*radius,
-    y: containerHeight/2 - radius + Math.sin(angle)*radius
-  });
-}
-
-/* 底中央 */
-points.push({x: 0, y: containerHeight/2});
-
-/* 右下カーブ */
-for(let i=0;i<=segments;i++){
-  let angle = (Math.PI/2)*(i/segments);
-  points.push({
-    x: containerWidth/2 - radius + Math.cos(angle)*radius,
-    y: containerHeight/2 - radius + Math.sin(angle)*radius
-  });
-}
-
-/* 右上 */
-points.push({x: containerWidth/2, y: -containerHeight/2});
-
-/* コンテナ作成 */
-const container = Bodies.fromVertices(
-  centerX,
-  topY + containerHeight/2,
-  [points],
-  {
-    isStatic:true,
-    render:{visible:false}
-  },
-  true
+const leftWall = Bodies.rectangle(
+  centerX-containerWidth/2,
+  bottomY-containerHeight/2,
+  wallThickness,
+  containerHeight,
+  {isStatic:true, render:{visible:false}}
 );
 
-World.add(world, container);
+const rightWall = Bodies.rectangle(
+  centerX+containerWidth/2,
+  bottomY-containerHeight/2,
+  wallThickness,
+  containerHeight,
+  {isStatic:true, render:{visible:false}}
+);
 
-/* ===== ボール設定 ===== */
+const bottomWall = Bodies.rectangle(
+  centerX,
+  bottomY+20,
+  containerWidth,
+  60,
+  {isStatic:true, render:{visible:false}}
+);
 
-const base=[18,26,36,48,62,78,100,125,160];
-const sizes=base.map(s=>Math.round(s*(isMobile?0.85:0.65)));
+World.add(world,[leftWall,rightWall,bottomWall]);
 
-const images=[
-"images/inugame_size1.png",
-"images/inugame_size2.png",
-"images/inugame_size3.png",
-"images/inugame_size4.png",
-"images/inugame_size5.png",
-"images/inugame_size6.png",
-"images/inugame_size7.png",
-"images/inugame_size8.png",
-"images/inugame_size9.png"
-];
+/* ===== 見た目用U字を描画 ===== */
 
+Events.on(render, "afterRender", function() {
+  const ctx = render.context;
+
+  ctx.beginPath();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#8b5e3c";
+
+  ctx.moveTo(centerX-containerWidth/2, topY);
+  ctx.lineTo(centerX-containerWidth/2, bottomY-cornerRadius);
+
+  ctx.arc(
+    centerX-containerWidth/2+cornerRadius,
+    bottomY-cornerRadius,
+    cornerRadius,
+    Math.PI,
+    Math.PI/2,
+    true
+  );
+
+  ctx.lineTo(centerX+containerWidth/2-cornerRadius, bottomY);
+
+  ctx.arc(
+    centerX+containerWidth/2-cornerRadius,
+    bottomY-cornerRadius,
+    cornerRadius,
+    Math.PI/2,
+    0,
+    true
+  );
+
+  ctx.lineTo(centerX+containerWidth/2, topY);
+
+  ctx.stroke();
+});
+
+/* ===== ボール ===== */
+
+const sizes=[20,28,40,55,75,100,130];
 let currentBall=null;
-let score=0;
-let isGameOver=false;
-
-let highScore=localStorage.getItem("highScore")||0;
-document.getElementById("highScore").innerText=highScore;
-
-const todayKey="daily-"+new Date().toISOString().slice(0,10);
-let dailyHigh=localStorage.getItem(todayKey)||0;
-document.getElementById("dailyHigh").innerText=dailyHigh;
-
-function createBall(i,x,y,s=false){
-  const r=sizes[i];
-  const ball=Bodies.circle(x,y,r,{
-    restitution:0.1,
-    friction:0.3,
-    frictionAir:0.02,
-    bullet:true,
-    isStatic:s,
-    render:{sprite:{texture:images[i],xScale:1,yScale:1}}
-  });
-
-  const img=new Image();
-  img.src=images[i];
-  img.onload=()=>{
-    const sc=(r*2)/Math.max(img.width,img.height);
-    ball.render.sprite.xScale=sc;
-    ball.render.sprite.yScale=sc;
-  };
-
-  ball.sizeIndex=i;
-  return ball;
-}
 
 function spawn(){
-  if(isGameOver)return;
-  const i=Math.floor(Math.random()*3);
-  currentBall=createBall(i,centerX,topY-40,true);
-  World.add(world,currentBall);
+  const ball=Bodies.circle(centerX,topY-40,sizes[0],{
+    restitution:0.1,
+    friction:0.3,
+    frictionAir:0.02
+  });
+  currentBall=ball;
+  World.add(world,ball);
 }
 spawn();
 
 function move(x){
-  if(!currentBall||isGameOver)return;
+  if(!currentBall)return;
   const min=centerX-containerWidth/2+30;
   const max=centerX+containerWidth/2-30;
   const fixed=Math.max(min,Math.min(max,x));
@@ -243,7 +213,7 @@ function move(x){
 }
 
 window.addEventListener("mousemove",e=>move(e.clientX));
-window.addEventListener("click",drop);
+window.addEventListener("click",()=>currentBall=null);
 
 window.addEventListener("touchmove",e=>{
   move(e.touches[0].clientX);
@@ -251,32 +221,9 @@ window.addEventListener("touchmove",e=>{
 
 window.addEventListener("touchstart",e=>{
   e.preventDefault();
-  drop();
+  currentBall=null;
 },{passive:false});
 
-function drop(){
-  if(currentBall&&!isGameOver){
-    Body.setStatic(currentBall,false);
-    currentBall=null;
-    setTimeout(spawn,400);
-  }
-}
-
-Events.on(engine,"collisionStart",e=>{
-  e.pairs.forEach(p=>{
-    const a=p.bodyA,b=p.bodyB;
-    if(a.sizeIndex!==undefined&&b.sizeIndex!==undefined&&a.sizeIndex===b.sizeIndex){
-      const n=a.sizeIndex+1;
-      if(n<sizes.length){
-        World.remove(world,a);
-        World.remove(world,b);
-        World.add(world,createBall(n,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2));
-        score+=(n+1)*5;
-        document.getElementById("score").innerText=score;
-      }
-    }
-  });
-});
 </script>
 
 </body>

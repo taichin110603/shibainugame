@@ -4,22 +4,31 @@
 <meta charset="UTF-8">
 <title>Shiba Inu Game</title>
 <script src="matter.min.js"></script>
+
 <style>
   body{
     margin:0;
-    background:#f0f8ff;
-    text-align:center;
+    background:#e6f7ff;
     font-family:sans-serif;
+    text-align:center;
   }
+
   #ui{
     position:absolute;
     right:30px;
     top:30px;
-    font-size:20px;
+    font-size:22px;
     font-weight:bold;
+    z-index:10;
+  }
+
+  canvas{
+    display:block;
+    margin:0 auto;
   }
 </style>
 </head>
+
 <body>
 
 <div id="ui">
@@ -29,10 +38,11 @@
 <script>
 const { Engine, Render, Runner, Bodies, World, Events } = Matter;
 
+// ===== エンジン =====
 const engine = Engine.create();
 const world = engine.world;
 
-// ====== 画面 ======
+// ===== 描画 =====
 const render = Render.create({
   element: document.body,
   engine: engine,
@@ -40,31 +50,31 @@ const render = Render.create({
     width:500,
     height:700,
     wireframes:false,
-    background:"#f0f8ff"
+    background:"#e6f7ff"
   }
 });
 
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-// ====== 容器 ======
-const wallThickness = 30;
-const containerWidth = 300;
+// ===== 容器設定 =====
+const wallThickness = 20;
+const containerWidth = 320;
 const containerHeight = 500;
-const containerX = 250;
-const containerY = 500;
+const centerX = 250;
+const bottomY = 650;
 
 // 床
 const floor = Bodies.rectangle(
-  containerX,
-  containerY,
+  centerX,
+  bottomY,
   containerWidth,
   wallThickness,
   {
     isStatic:true,
     render:{
-      fillStyle:"rgba(180,220,255,0.6)",
-      strokeStyle:"#88c",
+      fillStyle:"rgba(150,200,255,0.6)",
+      strokeStyle:"#3399ff",
       lineWidth:4
     }
   }
@@ -72,15 +82,15 @@ const floor = Bodies.rectangle(
 
 // 左壁
 const leftWall = Bodies.rectangle(
-  containerX - containerWidth/2,
-  containerY - containerHeight/2,
+  centerX - containerWidth/2,
+  bottomY - containerHeight/2,
   wallThickness,
   containerHeight,
   {
     isStatic:true,
     render:{
-      fillStyle:"rgba(180,220,255,0.6)",
-      strokeStyle:"#88c",
+      fillStyle:"rgba(150,200,255,0.6)",
+      strokeStyle:"#3399ff",
       lineWidth:4
     }
   }
@@ -88,15 +98,15 @@ const leftWall = Bodies.rectangle(
 
 // 右壁
 const rightWall = Bodies.rectangle(
-  containerX + containerWidth/2,
-  containerY - containerHeight/2,
+  centerX + containerWidth/2,
+  bottomY - containerHeight/2,
   wallThickness,
   containerHeight,
   {
     isStatic:true,
     render:{
-      fillStyle:"rgba(180,220,255,0.6)",
-      strokeStyle:"#88c",
+      fillStyle:"rgba(150,200,255,0.6)",
+      strokeStyle:"#3399ff",
       lineWidth:4
     }
   }
@@ -104,35 +114,36 @@ const rightWall = Bodies.rectangle(
 
 World.add(world, [floor, leftWall, rightWall]);
 
-// ====== ボール ======
+// ===== ボール =====
 let score = 0;
-let currentBall = null;
 
 function createBall(x){
-  return Bodies.circle(x, 100, 20, {
+  return Bodies.circle(x, 80, 20, {
     restitution:0.4,
     render:{
-      fillStyle:"#b5651d" // とりあえず茶色
+      fillStyle:"#b5651d"
     }
   });
 }
 
-function spawnBall(x){
-  currentBall = createBall(x);
-  World.add(world, currentBall);
-}
+// 最初のボール
+let currentBall = createBall(centerX);
+World.add(world, currentBall);
 
-spawnBall(250);
-
-// ====== クリックで落とす ======
+// ===== クリックで追加 =====
 document.addEventListener("click", function(e){
-  if(!currentBall) return;
-  spawnBall(e.offsetX);
+
+  // キャンバス位置を取得
+  const rect = render.canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+
+  const newBall = createBall(x);
+  World.add(world, newBall);
 });
 
-// ====== スコア（仮） ======
-Events.on(engine,"collisionStart",function(event){
-  score += 1;
+// ===== 衝突でスコア =====
+Events.on(engine,"collisionStart",function(){
+  score++;
   document.getElementById("score").innerText = score;
 });
 </script>

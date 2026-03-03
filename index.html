@@ -19,6 +19,7 @@ width:100%;
 height:100%;
 background:linear-gradient(#ffb347,#ffcc70);
 font-family:sans-serif;
+touch-action:none;
 }
 
 #containerVisual{
@@ -51,7 +52,7 @@ width:230px;
 font-size:14px;
 line-height:1.6em;
 z-index:10;
-background:rgba(255,255,255,0.8);
+background:rgba(255,255,255,0.85);
 padding:10px;
 border-radius:10px;
 }
@@ -113,7 +114,10 @@ const {Engine,Render,Runner,World,Bodies,Body,Events}=Matter;
 
 const width=window.innerWidth;
 const height=window.innerHeight;
+const isMobile = width < 768;
+
 const engine=Engine.create();
+engine.world.gravity.y = 1;
 const world=engine.world;
 
 const render=Render.create({
@@ -124,17 +128,21 @@ options:{width,height,wireframes:false,background:"transparent"}
 Render.run(render);
 Runner.run(Runner.create(),engine);
 
-const containerWidth=420;
-const containerHeight=520;
+/* ===== 容器サイズ ===== */
+const containerWidth = isMobile ? width*0.9 : 420;
+const containerHeight = isMobile ? height*0.6 : 520;
+
 const centerX=width/2;
 const topY=height*0.15;
 const bottomY=topY+containerHeight;
 
+/* ===== 見た目容器 ===== */
 const visual=document.getElementById("containerVisual");
 visual.style.width=containerWidth+"px";
 visual.style.height=containerHeight+"px";
 visual.style.top=topY+"px";
 
+/* ===== 物理壁 ===== */
 const wallThickness=40;
 World.add(world,[
 Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,wallThickness,containerHeight,{isStatic:true,render:{visible:false}}),
@@ -142,9 +150,10 @@ Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,wallThicknes
 Bodies.rectangle(centerX,bottomY+20,containerWidth,60,{isStatic:true,render:{visible:false}})
 ]);
 
-/* 🔥 サイズ11段階 */
+/* ===== サイズ11段階 ===== */
 const sizes=[18,26,36,48,62,78,100,125,160,200,240];
 
+/* ===== 画像 ===== */
 const dogImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -162,8 +171,11 @@ const dogImages=[
 let currentBall=null;
 let score=0;
 let highScore=localStorage.getItem("highScore")||0;
+let isGameOver=false;
+
 document.getElementById("highScore").innerText=highScore;
 
+/* ===== ボール作成 ===== */
 function createBall(sizeIndex,x,y,isStatic=false){
 const radius=sizes[sizeIndex];
 const texture=dogImages[sizeIndex];
@@ -187,41 +199,69 @@ ball.sizeIndex=sizeIndex;
 return ball;
 }
 
+/* ===== ボール生成 ===== */
 function spawnBall(){
+if(isGameOver) return;
 const sizeIndex=Math.floor(Math.random()*3);
 currentBall=createBall(sizeIndex,centerX,topY,true);
 World.add(world,currentBall);
 }
 spawnBall();
 
+/* ===== ★ 容器外に出られない移動処理 ★ ===== */
+function moveBall(x){
+if(!currentBall || isGameOver) return;
+
+const min = centerX - containerWidth/2 + currentBall.circleRadius;
+const max = centerX + containerWidth/2 - currentBall.circleRadius;
+
+const fixedX = Math.max(min, Math.min(max, x));
+
+Body.setPosition(currentBall,{x:fixedX,y:topY});
+}
+
+/* PC */
 window.addEventListener("mousemove",e=>{
-if(currentBall) Body.setPosition(currentBall,{x:e.clientX,y:topY});
+moveBall(e.clientX);
 });
 
-window.addEventListener("click",()=>{
-if(currentBall){
+/* スマホ */
+window.addEventListener("touchmove",e=>{
+moveBall(e.touches[0].clientX);
+},{passive:false});
+
+/* 落下 */
+function dropBall(){
+if(currentBall && !isGameOver){
 Body.setStatic(currentBall,false);
 currentBall=null;
 setTimeout(spawnBall,400);
 }
-});
+}
 
-/* 🔥 合体安定版 */
+window.addEventListener("click",dropBall);
+window.addEventListener("touchstart",dropBall,{passive:false});
+
+/* ===== 合体処理 ===== */
 Events.on(engine,"collisionStart",event=>{
 event.pairs.forEach(pair=>{
 const a=pair.bodyA;
 const b=pair.bodyB;
-if(!a.sizeIndex && !b.sizeIndex) return;
-if(a.sizeIndex===b.sizeIndex && a!==b){
-if(a.merged||b.merged) return;
+
+if(a.sizeIndex===undefined || b.sizeIndex===undefined) return;
+if(a.sizeIndex!==b.sizeIndex) return;
+if(a.merged || b.merged) return;
+
 a.merged=true;
 b.merged=true;
 
 const newSize=a.sizeIndex+1;
 if(newSize<sizes.length){
+
 const newBall=createBall(newSize,
 (a.position.x+b.position.x)/2,
 (a.position.y+b.position.y)/2);
+
 World.remove(world,a);
 World.remove(world,b);
 World.add(world,newBall);
@@ -235,12 +275,23 @@ localStorage.setItem("highScore",highScore);
 document.getElementById("highScore").innerText=highScore;
 }
 }
+});
+});
+
+/* ===== ゲームオーバー判定 ===== */
+Events.on(engine,"afterUpdate",()=>{
+if(isGameOver) return;
+
+world.bodies.forEach(body=>{
+if(body.sizeIndex!==undefined && body.position.y < topY-50){
+isGameOver=true;
+document.getElementById("gameOver").style.display="block";
 }
 });
 });
 </script>
 
-<!-- 🔥 世界ランキングTOP5 -->
+<!-- ===== 世界ランキングTOP5 ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";

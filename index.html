@@ -69,8 +69,8 @@ Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,container
 Bodies.rectangle(centerX,bottomY+30,containerWidth,60,{isStatic:true})
 ]);
 
-// ボールサイズと画像インデックス対応
-const sizes=[20,28,38,50,65,82,105,130,165,205,250];
+// ボールサイズと画像対応（小さい順）
+const sizes=[20,28,38,50,65,82,100,125,160];
 const dogImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -80,16 +80,14 @@ const dogImages=[
 "images/inugame_size6.png",
 "images/inugame_size7.png",
 "images/inugame_size8.png",
-"images/inugame_size9.png",
-"images/inugame_size10.png",
-"images/inugame_size11.png"
+"images/inugame_size9.png"
 ];
 
 let currentBall=null;
 let score=0;
 let isGameOver=false;
 
-// 🔹 ボール作成関数（サイズインデックスで自動画像対応）
+// ボール作成関数（サイズインデックスで画像対応）
 function createBall(sizeIndex,x,y){
   const radius=sizes[sizeIndex];
   const texture=dogImages[sizeIndex];
@@ -100,7 +98,6 @@ function createBall(sizeIndex,x,y){
     render:{sprite:{texture:texture,xScale:1,yScale:1}}
   });
 
-  // 画像をロードしてスケーリング
   const img=new Image();
   img.src=texture;
   img.onload=function(){
@@ -175,12 +172,11 @@ Events.on(engine,"afterUpdate",()=>{
 });
 </script>
 
-<!-- 🔥 世界ランキング -->
+<!-- 世界ランキング -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast, remove } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
 
-// Firebase初期化
 const firebaseConfig={
   apiKey:"AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
   authDomain:"shibainugame-1865a.firebaseapp.com",
@@ -193,7 +189,7 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 
-// 🔹 ランキングリセット（最初に一度だけ）
+// 最初にランキングリセット
 remove(ref(db,"ranking")).then(()=>console.log("ランキングリセット完了"));
 
 // スコア送信

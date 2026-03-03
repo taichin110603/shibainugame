@@ -6,8 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/poly-decomp/0.3.0/poly-decomp.min.js"></script>
-<script> Matter.Common.setDecomp(window.decomp); </script>
 
 <style>
 body,html{
@@ -19,6 +17,7 @@ background:linear-gradient(#ffb347,#ffcc70);
 font-family:sans-serif;
 touch-action:none;
 }
+
 #containerVisual{
 position:absolute;
 left:50%;
@@ -28,28 +27,30 @@ border-right:8px solid #8b4513;
 border-bottom:8px solid #8b4513;
 border-bottom-left-radius:50px;
 border-bottom-right-radius:50px;
-pointer-events:none;
-z-index:1;
 background:rgba(255,200,150,0.25);
+z-index:1;
 }
+
 #scoreBox{
 position:absolute;
 top:15px;
 right:15px;
-font-size:18px;
 z-index:10;
+font-size:18px;
 }
+
 #rankingBox{
 position:absolute;
 top:15px;
 left:15px;
-width:170px;
+width:150px;
 font-size:12px;
-background:rgba(255,255,255,0.9);
+background:white;
 padding:8px;
 border-radius:10px;
 z-index:10;
 }
+
 #gameOver{
 position:absolute;
 top:50%;
@@ -62,12 +63,13 @@ border-radius:10px;
 z-index:20;
 text-align:center;
 }
-#playerName{
-width:120px;
+
+input{
 padding:5px;
-font-size:16px;
+font-size:14px;
 text-align:center;
 }
+
 button{
 margin-top:10px;
 padding:6px 12px;
@@ -77,6 +79,7 @@ background:#ff595e;
 color:white;
 cursor:pointer;
 }
+
 canvas{position:absolute;top:0;left:0;}
 </style>
 </head>
@@ -100,7 +103,7 @@ High : <span id="highScore">0</span>
 <br>
 <button onclick="submitScore()">スコア送信</button>
 <br>
-<button onclick="restartGame()">Retry</button>
+<button onclick="location.reload()">Retry</button>
 </div>
 
 <script>
@@ -110,33 +113,23 @@ const width=window.innerWidth;
 const height=window.innerHeight;
 const isMobile=width<768;
 
-let engine, world, render, runner;
-let score=0;
-let highScore=localStorage.getItem("highScore")||0;
-let isGameOver=false;
-let currentBall=null;
-
-document.getElementById("highScore").innerText=highScore;
-
-function initGame(){
-
-engine=Engine.create();
+const engine=Engine.create();
 engine.world.gravity.y=1;
-world=engine.world;
+const world=engine.world;
 
-render=Render.create({
+const render=Render.create({
 element:document.body,
 engine,
 options:{width,height,wireframes:false,background:"transparent"}
 });
 Render.run(render);
-runner=Runner.create();
-Runner.run(runner,engine);
+Runner.run(Runner.create(),engine);
 
-const containerWidth=isMobile?width*0.92:460;
+const containerWidth=isMobile?width*0.9:460;
 const containerHeight=isMobile?height*0.65:560;
+
 const centerX=width/2;
-const topY=isMobile?height*0.22:height*0.18;
+const topY=isMobile?height*0.25:height*0.2;
 const bottomY=topY+containerHeight;
 
 const visual=document.getElementById("containerVisual");
@@ -147,10 +140,10 @@ visual.style.top=topY+"px";
 World.add(world,[
 Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{isStatic:true}),
 Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{isStatic:true}),
-Bodies.rectangle(centerX,bottomY+20,containerWidth,60,{isStatic:true})
+Bodies.rectangle(centerX,bottomY+30,containerWidth,60,{isStatic:true})
 ]);
 
-const sizes=[20,28,38,50,65,82,105,130,165,205,250];
+const sizes=[20,30,45,65,90,120,160,210];
 const dogImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -159,15 +152,30 @@ const dogImages=[
 "images/inugame_size5.png",
 "images/inugame_size6.png",
 "images/inugame_size7.png",
-"images/inugame_size8.png",
-"images/inugame_size9.png",
-"images/inugame_size10.png",
-"images/inugame_size11.png"
+"images/inugame_size8.png"
 ];
 
-function createBall(sizeIndex,x,y,isStatic=false){
+let currentBall=null;
+let score=0;
+let highScore=localStorage.getItem("highScore")||0;
+let isGameOver=false;
+
+document.getElementById("highScore").innerText=highScore;
+
+function createBall(sizeIndex,x,y){
 const radius=sizes[sizeIndex];
-const ball=Bodies.circle(x,y,radius,{restitution:0.2,friction:0.3,isStatic});
+
+const ball=Bodies.circle(x,y,radius,{
+restitution:0.2,
+friction:0.3,
+render:{
+sprite:{
+texture:dogImages[sizeIndex],
+xScale:(radius*2)/200,
+yScale:(radius*2)/200
+}
+}
+});
 ball.sizeIndex=sizeIndex;
 return ball;
 }
@@ -175,37 +183,93 @@ return ball;
 function spawnBall(){
 if(isGameOver) return;
 const sizeIndex=Math.floor(Math.random()*3);
-currentBall=createBall(sizeIndex,width/2,height*0.18,true);
+currentBall=createBall(sizeIndex,centerX,topY);
+Body.setStatic(currentBall,true);
 World.add(world,currentBall);
 }
 spawnBall();
 
-window.addEventListener("click",()=>{
-if(!currentBall||isGameOver)return;
+function moveBall(x){
+if(!currentBall||isGameOver) return;
+const min=centerX-containerWidth/2+currentBall.circleRadius;
+const max=centerX+containerWidth/2-currentBall.circleRadius;
+x=Math.max(min,Math.min(max,x));
+Body.setPosition(currentBall,{x:x,y:topY});
+}
+
+function dropBall(){
+if(!currentBall||isGameOver) return;
 Body.setStatic(currentBall,false);
 currentBall=null;
-setTimeout(spawnBall,400);
+setTimeout(spawnBall,500);
+}
+
+/* PC */
+window.addEventListener("mousemove",e=>{
+if(!isMobile) moveBall(e.clientX);
+});
+window.addEventListener("click",()=>{
+if(!isMobile) dropBall();
 });
 
+/* スマホ */
+window.addEventListener("touchmove",e=>{
+if(isMobile){
+moveBall(e.touches[0].clientX);
+}
+},{passive:false});
+
+window.addEventListener("touchend",()=>{
+if(isMobile) dropBall();
+});
+
+/* 合体 */
+Events.on(engine,"collisionStart",e=>{
+e.pairs.forEach(pair=>{
+const a=pair.bodyA;
+const b=pair.bodyB;
+if(a.sizeIndex===undefined||b.sizeIndex===undefined) return;
+if(a.sizeIndex!==b.sizeIndex) return;
+if(a.isMerging||b.isMerging) return;
+
+a.isMerging=true;
+b.isMerging=true;
+
+const newSize=a.sizeIndex+1;
+if(newSize>=sizes.length) return;
+
+const newBall=createBall(newSize,
+(a.position.x+b.position.x)/2,
+(a.position.y+b.position.y)/2
+);
+
+World.remove(world,a);
+World.remove(world,b);
+World.add(world,newBall);
+
+score+=(newSize+1)*10;
+document.getElementById("score").innerText=score;
+
+if(score>highScore){
+highScore=score;
+localStorage.setItem("highScore",highScore);
+document.getElementById("highScore").innerText=highScore;
+}
+});
+});
+
+/* 画面外落下でゲームオーバー */
 Events.on(engine,"afterUpdate",()=>{
 if(isGameOver) return;
-for(let body of world.bodies){
+world.bodies.forEach(body=>{
 if(body.sizeIndex!==undefined){
-if(body.position.y-body.circleRadius>height+100){
+if(body.position.y - body.circleRadius > height){
 isGameOver=true;
 document.getElementById("gameOver").style.display="block";
-break;
-}
 }
 }
 });
-}
-
-function restartGame(){
-location.reload();
-}
-
-initGame();
+});
 </script>
 
 <!-- Firebase -->
@@ -213,14 +277,14 @@ initGame();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
 
-const firebaseConfig={
-apiKey:"AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
-authDomain:"shibainugame-1865a.firebaseapp.com",
-databaseURL:"https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
-projectId:"shibainugame-1865a",
-storageBucket:"shibainugame-1865a.firebasestorage.app",
-messagingSenderId:"278247707611",
-appId:"1:278247707611:web:9a04085c0493fd2ee64dfe"
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
+  authDomain: "shibainugame-1865a.firebaseapp.com",
+  databaseURL: "https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "shibainugame-1865a",
+  storageBucket: "shibainugame-1865a.firebasestorage.app",
+  messagingSenderId: "278247707611",
+  appId: "1:278247707611:web:9a04085c0493fd2ee64dfe"
 };
 
 const app=initializeApp(firebaseConfig);
@@ -228,13 +292,9 @@ const db=getDatabase(app);
 
 window.submitScore=function(){
 const name=document.getElementById("playerName").value.trim();
-if(name.length===0){alert("名前を入力してね！");return;}
-if(name.length>5){alert("5文字まで！");return;}
-
+if(name===""){ alert("名前を入力してね！"); return; }
 push(ref(db,"ranking"),{name,score});
 alert("登録完了！");
-document.getElementById("gameOver").style.display="none";
-restartGame();
 };
 
 const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(5));
@@ -246,7 +306,11 @@ const data=[];
 snapshot.forEach(child=>data.push(child.val()));
 data.reverse();
 data.forEach((item,i)=>{
+if(i===0){
+box.innerHTML+="🏆 <span style='color:gold'>"+item.name+" - "+item.score+"</span><br>";
+}else{
 box.innerHTML+=(i+1)+"位 "+item.name+" - "+item.score+"<br>";
+}
 });
 });
 </script>

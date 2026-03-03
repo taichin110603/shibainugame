@@ -14,44 +14,45 @@ import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
-apiKey: "あなたのapiKey",
-authDomain: "shibainugame-1865a.firebaseapp.com",
-databaseURL: "https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
-projectId: "shibainugame-1865a",
-storageBucket: "shibainugame-1865a.appspot.com",
-messagingSenderId: "あなたのsenderId",
-appId: "あなたのappId"
+  apiKey: "AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
+  authDomain: "shibainugame-1865a.firebaseapp.com",
+  databaseURL: "https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "shibainugame-1865a",
+  storageBucket: "shibainugame-1865a.firebasestorage.app",
+  messagingSenderId: "278247707611",
+  appId: "1:278247707611:web:9a04085c0493fd2ee64dfe"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 window.submitScore = function(){
-const name = document.getElementById("playerName").value.trim();
-if(!name) return alert("名前を入力してね");
+  const name = document.getElementById("playerName").value.trim();
+  if(!name) return alert("名前を入力してね");
 
-push(ref(db,"ranking"),{
-name:name,
-score:window.finalScore
-});
-alert("送信完了！");
-location.reload();
+  push(ref(db,"ranking"),{
+    name:name,
+    score:window.finalScore
+  });
+
+  alert("送信完了！");
+  location.reload();
 };
 
 function loadRanking(){
-const rankingRef = query(ref(db,"ranking"), orderByChild("score"), limitToLast(5));
-onValue(rankingRef,(snapshot)=>{
-let data=[];
-snapshot.forEach(child=>{
-data.push(child.val());
-});
-data.sort((a,b)=>b.score-a.score);
-const box=document.getElementById("ranking");
-box.innerHTML="";
-data.forEach((r,i)=>{
-box.innerHTML+=`${i+1}. ${r.name} : ${r.score}<br>`;
-});
-});
+  const rankingRef = query(ref(db,"ranking"), orderByChild("score"), limitToLast(5));
+  onValue(rankingRef,(snapshot)=>{
+    let data=[];
+    snapshot.forEach(child=>{
+      data.push(child.val());
+    });
+    data.sort((a,b)=>b.score-a.score);
+    const box=document.getElementById("ranking");
+    box.innerHTML="";
+    data.forEach((r,i)=>{
+      box.innerHTML+=`${i+1}. ${r.name} : ${r.score}<br>`;
+    });
+  });
 }
 loadRanking();
 </script>
@@ -92,7 +93,7 @@ font-size:18px;
 position:absolute;
 top:15px;
 left:15px;
-width:160px;
+width:170px;
 font-size:13px;
 background:white;
 padding:8px;

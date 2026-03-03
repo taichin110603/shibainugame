@@ -143,7 +143,9 @@ Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,container
 Bodies.rectangle(centerX,bottomY+30,containerWidth,60,{isStatic:true})
 ]);
 
-const sizes=[20,30,45,65,90,120,160,210];
+/* 昔の自然なサイズ感 */
+const sizes=[20,28,38,50,65,82,105,130,165,205,250];
+
 const dogImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -152,7 +154,10 @@ const dogImages=[
 "images/inugame_size5.png",
 "images/inugame_size6.png",
 "images/inugame_size7.png",
-"images/inugame_size8.png"
+"images/inugame_size8.png",
+"images/inugame_size9.png",
+"images/inugame_size10.png",
+"images/inugame_size11.png"
 ];
 
 let currentBall=null;
@@ -164,18 +169,22 @@ document.getElementById("highScore").innerText=highScore;
 
 function createBall(sizeIndex,x,y){
 const radius=sizes[sizeIndex];
+const texture=dogImages[sizeIndex];
 
 const ball=Bodies.circle(x,y,radius,{
 restitution:0.2,
 friction:0.3,
-render:{
-sprite:{
-texture:dogImages[sizeIndex],
-xScale:(radius*2)/200,
-yScale:(radius*2)/200
-}
-}
+render:{sprite:{texture:texture}}
 });
+
+const img=new Image();
+img.src=texture;
+img.onload=function(){
+const scale=(radius*2)/img.width;
+ball.render.sprite.xScale=scale;
+ball.render.sprite.yScale=scale;
+};
+
 ball.sizeIndex=sizeIndex;
 return ball;
 }
@@ -204,15 +213,14 @@ currentBall=null;
 setTimeout(spawnBall,500);
 }
 
-/* PC */
 window.addEventListener("mousemove",e=>{
 if(!isMobile) moveBall(e.clientX);
 });
+
 window.addEventListener("click",()=>{
 if(!isMobile) dropBall();
 });
 
-/* スマホ */
 window.addEventListener("touchmove",e=>{
 if(isMobile){
 moveBall(e.touches[0].clientX);
@@ -223,11 +231,11 @@ window.addEventListener("touchend",()=>{
 if(isMobile) dropBall();
 });
 
-/* 合体 */
 Events.on(engine,"collisionStart",e=>{
 e.pairs.forEach(pair=>{
 const a=pair.bodyA;
 const b=pair.bodyB;
+
 if(a.sizeIndex===undefined||b.sizeIndex===undefined) return;
 if(a.sizeIndex!==b.sizeIndex) return;
 if(a.isMerging||b.isMerging) return;
@@ -258,7 +266,6 @@ document.getElementById("highScore").innerText=highScore;
 });
 });
 
-/* 画面外落下でゲームオーバー */
 Events.on(engine,"afterUpdate",()=>{
 if(isGameOver) return;
 world.bodies.forEach(body=>{

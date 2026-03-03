@@ -5,7 +5,7 @@
 <title>犬スイカゲーム 🐶</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- 元々の方式で読み込む CDN -->
+<!-- Matter.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
@@ -67,6 +67,20 @@ button{
   color:white;
 }
 
+/* 容器（犬の餌皿っぽく） */
+#containerVisual{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  border-left:6px solid #8b5e3c;
+  border-right:6px solid #8b5e3c;
+  border-bottom:6px solid #8b5e3c;
+  border-bottom-left-radius:50px;
+  border-bottom-right-radius:50px;
+  pointer-events:none;
+  z-index:1;
+}
+
 canvas{
   position:absolute;
   top:0;
@@ -77,7 +91,6 @@ canvas{
 </head>
 <body>
 
-<!-- 容器 -->
 <div id="containerVisual"></div>
 
 <div id="scoreBox">
@@ -106,12 +119,10 @@ const width = window.innerWidth;
 const height = window.innerHeight;
 const isMobile = width < 768;
 
-// エンジンと世界
 const engine = Engine.create();
 engine.world.gravity.y = 1;
 const world = engine.world;
 
-// レンダラー
 const render = Render.create({
   element: document.body,
   engine: engine,
@@ -132,25 +143,24 @@ const centerX = width/2;
 const topY = height*0.15;
 const bottomY = topY + containerHeight;
 
-// CSS 容器反映
+// CSS 容器に反映
 const visual=document.getElementById("containerVisual");
 visual.style.width = containerWidth+"px";
 visual.style.height = containerHeight+"px";
 visual.style.top = topY+"px";
 
-// 壁
+// 見えない壁（物理用）
 const wallThickness = 40;
 const leftWall = Bodies.rectangle(centerX-containerWidth/2, bottomY-containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{visible:false}});
 const rightWall = Bodies.rectangle(centerX+containerWidth/2, bottomY-containerHeight/2, wallThickness, containerHeight, {isStatic:true, render:{visible:false}});
 const floor = Bodies.rectangle(centerX, bottomY+20, containerWidth, 60, {isStatic:true, render:{visible:false}});
 World.add(world,[leftWall,rightWall,floor]);
 
-// ボールサイズ
+// ボールサイズと画像
 const baseSizes=[18,26,36,48,62,78,100,125,160];
 const sizeMultiplier = isMobile ? 0.75 : 0.6;
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
-// ボール画像
 const dogImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -265,7 +275,7 @@ Events.on(engine,"afterUpdate",()=>{
 });
 </script>
 
-<!-- 世界ランキング（Firebase） -->
+<!-- 世界ランキング -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";

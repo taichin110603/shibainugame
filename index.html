@@ -20,7 +20,6 @@ font-family:sans-serif;
 touch-action:none;
 }
 
-/* 容器 */
 #containerVisual{
 position:absolute;
 left:50%;
@@ -35,7 +34,6 @@ z-index:1;
 background:rgba(255,200,150,0.25);
 }
 
-/* スコア */
 #scoreBox{
 position:absolute;
 top:15px;
@@ -44,7 +42,6 @@ font-size:18px;
 z-index:10;
 }
 
-/* ランキング */
 #rankingBox{
 position:absolute;
 top:15px;
@@ -53,7 +50,7 @@ width:170px;
 font-size:12px;
 line-height:1.4em;
 z-index:10;
-background:rgba(255,255,255,0.85);
+background:rgba(255,255,255,0.9);
 padding:8px;
 border-radius:10px;
 }
@@ -71,6 +68,24 @@ z-index:20;
 text-align:center;
 }
 
+#playerName{
+width:120px;
+padding:5px;
+font-size:16px;
+text-align:center;
+}
+
+button{
+margin-top:10px;
+padding:6px 12px;
+border:none;
+border-radius:6px;
+background:#ff595e;
+color:white;
+font-size:14px;
+cursor:pointer;
+}
+
 canvas{position:absolute;top:0;left:0;}
 </style>
 </head>
@@ -84,12 +99,16 @@ High : <span id="highScore">0</span>
 </div>
 
 <div id="rankingBox">
-<b>🌍 TOP5</b>
+<b>🌍 世界ランキング TOP5</b>
 <div id="ranking"></div>
 </div>
 
 <div id="gameOver">
-<h1 style="color:red;">GAME OVER</h1>
+<h2>GAME OVER</h2>
+<input id="playerName" maxlength="5" placeholder="名前(5文字)">
+<br>
+<button onclick="submitScore()">スコア送信</button>
+<br>
 <button onclick="location.reload()">Retry</button>
 </div>
 
@@ -112,7 +131,6 @@ options:{width,height,wireframes:false,background:"transparent"}
 Render.run(render);
 Runner.run(Runner.create(),engine);
 
-/* 容器サイズ */
 const containerWidth=isMobile?width*0.92:460;
 const containerHeight=isMobile?height*0.65:560;
 
@@ -125,17 +143,14 @@ visual.style.width=containerWidth+"px";
 visual.style.height=containerHeight+"px";
 visual.style.top=topY+"px";
 
-/* 壁 */
 World.add(world,[
 Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{isStatic:true}),
 Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{isStatic:true}),
 Bodies.rectangle(centerX,bottomY+20,containerWidth,60,{isStatic:true})
 ]);
 
-/* サイズ */
 const sizes=[20,28,38,50,65,82,105,130,165,205,250];
 
-/* 画像 */
 const dogImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -157,7 +172,6 @@ let isGameOver=false;
 
 document.getElementById("highScore").innerText=highScore;
 
-/* ボール作成 */
 function createBall(sizeIndex,x,y,isStatic=false){
 const radius=sizes[sizeIndex];
 const texture=dogImages[sizeIndex];
@@ -181,7 +195,6 @@ ball.sizeIndex=sizeIndex;
 return ball;
 }
 
-/* 生成 */
 function spawnBall(){
 if(isGameOver) return;
 const sizeIndex=Math.floor(Math.random()*3);
@@ -190,7 +203,6 @@ World.add(world,currentBall);
 }
 spawnBall();
 
-/* 移動制限 */
 function moveBall(x){
 if(!currentBall || isGameOver) return;
 
@@ -209,7 +221,6 @@ window.addEventListener("touchmove",e=>{
 if(isMobile) moveBall(e.touches[0].clientX);
 },{passive:false});
 
-/* 落下 */
 function dropBall(){
 if(!currentBall || isGameOver) return;
 Body.setStatic(currentBall,false);
@@ -223,7 +234,6 @@ window.addEventListener("touchend",dropBall);
 window.addEventListener("click",dropBall);
 }
 
-/* 合体 */
 Events.on(engine,"collisionStart",event=>{
 event.pairs.forEach(pair=>{
 const a=pair.bodyA;
@@ -258,22 +268,65 @@ document.getElementById("highScore").innerText=highScore;
 });
 });
 
-/* ===== ゲームオーバー：画面外落下のみ ===== */
+/* 画面外落下でゲームオーバー */
 Events.on(engine,"afterUpdate",()=>{
 if(isGameOver) return;
 
 for(let body of world.bodies){
 if(body.sizeIndex!==undefined){
-
-// 画面の一番下よりさらに下に行ったら終了
 if(body.position.y - body.circleRadius > height + 100){
 isGameOver=true;
 document.getElementById("gameOver").style.display="block";
 break;
 }
+}
+}
+});
+</script>
 
+<!-- Firebaseランキング -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"YOUR_API_KEY",
+authDomain:"YOUR_AUTH_DOMAIN",
+databaseURL:"YOUR_DATABASE_URL",
+projectId:"YOUR_PROJECT_ID",
+storageBucket:"YOUR_BUCKET",
+messagingSenderId:"YOUR_SENDER_ID",
+appId:"YOUR_APP_ID"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+
+window.submitScore=function(){
+const name=document.getElementById("playerName").value.trim();
+if(name===""){
+alert("名前を入力してね！");
+return;
 }
+push(ref(db,"ranking"),{name,score});
+alert("ランキング登録完了！");
+};
+
+const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(5));
+
+onValue(rankingRef,(snapshot)=>{
+const box=document.getElementById("ranking");
+box.innerHTML="";
+const data=[];
+snapshot.forEach(child=>data.push(child.val()));
+data.reverse();
+data.forEach((item,i)=>{
+if(i===0){
+box.innerHTML+="🏆 <span style='color:gold'>"+item.name+" - "+item.score+"</span><br>";
+}else{
+box.innerHTML+=(i+1)+"位 "+item.name+" - "+item.score+"<br>";
 }
+});
 });
 </script>
 

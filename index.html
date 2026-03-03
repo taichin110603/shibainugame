@@ -7,145 +7,22 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
-<!-- 🔥 Firebase -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
-  authDomain: "shibainugame-1865a.firebaseapp.com",
-  databaseURL: "https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "shibainugame-1865a",
-  storageBucket: "shibainugame-1865a.firebasestorage.app",
-  messagingSenderId: "278247707611",
-  appId: "1:278247707611:web:9a04085c0493fd2ee64dfe"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-window.submitScore = function(){
-  const name = document.getElementById("playerName").value.trim();
-  if(!name) return alert("名前を入力してね");
-
-  push(ref(db,"ranking"),{
-    name:name,
-    score:window.finalScore
-  });
-
-  alert("送信完了！");
-  location.reload();
-};
-
-function loadRanking(){
-  const rankingRef = query(ref(db,"ranking"), orderByChild("score"), limitToLast(5));
-  onValue(rankingRef,(snapshot)=>{
-    let data=[];
-    snapshot.forEach(child=>{
-      data.push(child.val());
-    });
-    data.sort((a,b)=>b.score-a.score);
-    const box=document.getElementById("ranking");
-    box.innerHTML="";
-    data.forEach((r,i)=>{
-      box.innerHTML+=`${i+1}. ${r.name} : ${r.score}<br>`;
-    });
-  });
-}
-loadRanking();
-</script>
-
 <style>
-body,html{
-margin:0;
-overflow:hidden;
-width:100%;
-height:100%;
-background:linear-gradient(#ffb347,#ffcc70);
-font-family:sans-serif;
-touch-action:none;
-}
-
-#containerVisual{
-position:absolute;
-left:50%;
-transform:translateX(-50%);
-border-left:8px solid #8b4513;
-border-right:8px solid #8b4513;
-border-bottom:8px solid #8b4513;
-border-bottom-left-radius:50px;
-border-bottom-right-radius:50px;
-background:rgba(255,200,150,0.25);
-z-index:1;
-}
-
-#scoreBox{
-position:absolute;
-top:15px;
-right:15px;
-z-index:10;
-font-size:18px;
-}
-
-#rankingBox{
-position:absolute;
-top:15px;
-left:15px;
-width:170px;
-font-size:13px;
-background:white;
-padding:8px;
-border-radius:10px;
-z-index:10;
-}
-
-#gameOver{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-display:none;
-background:white;
-padding:20px;
-border-radius:10px;
-z-index:20;
-text-align:center;
-}
-
-input{
-padding:5px;
-font-size:14px;
-text-align:center;
-}
-
-button{
-margin-top:10px;
-padding:6px 12px;
-border:none;
-border-radius:6px;
-background:#ff595e;
-color:white;
-cursor:pointer;
-}
-
+body,html{margin:0;overflow:hidden;width:100%;height:100%;background:linear-gradient(#ffb347,#ffcc70);font-family:sans-serif;}
+#containerVisual{position:absolute;left:50%;transform:translateX(-50%);border-left:8px solid #8b4513;border-right:8px solid #8b4513;border-bottom:8px solid #8b4513;border-bottom-left-radius:50px;border-bottom-right-radius:50px;background:rgba(255,200,150,0.25);z-index:1;}
+#scoreBox{position:absolute;top:15px;right:15px;z-index:10;}
+#rankingBox{position:absolute;top:15px;left:15px;width:180px;font-size:13px;background:white;padding:8px;border-radius:10px;z-index:10;}
+#gameOver{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:none;background:white;padding:20px;border-radius:10px;z-index:20;text-align:center;}
 canvas{position:absolute;top:0;left:0;}
+button{margin-top:10px;padding:6px 12px;border:none;border-radius:6px;background:#ff595e;color:white;}
+input{padding:5px;text-align:center;}
 </style>
 </head>
 <body>
 
 <div id="containerVisual"></div>
-
-<div id="scoreBox">
-Score : <span id="score">0</span><br>
-High : <span id="highScore">0</span>
-</div>
-
-<div id="rankingBox">
-<b>🌍 世界ランキング TOP5</b>
-<div id="ranking"></div>
-</div>
+<div id="scoreBox">Score : <span id="score">0</span></div>
+<div id="rankingBox"><b>🌍 世界ランキング TOP5</b><div id="ranking"></div></div>
 
 <div id="gameOver">
 <h2>GAME OVER</h2>
@@ -168,16 +45,15 @@ engine.world.gravity.y=1;
 const world=engine.world;
 
 const render=Render.create({
-element:document.body,
-engine,
+element:document.body,engine,
 options:{width,height,wireframes:false,background:"transparent"}
 });
 Render.run(render);
 Runner.run(Runner.create(),engine);
 
+// 容器
 const containerWidth=isMobile?width*0.9:460;
 const containerHeight=isMobile?height*0.65:560;
-
 const centerX=width/2;
 const topY=isMobile?height*0.25:height*0.2;
 const bottomY=topY+containerHeight;
@@ -193,100 +69,154 @@ Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,container
 Bodies.rectangle(centerX,bottomY+30,containerWidth,60,{isStatic:true})
 ]);
 
+// ボールサイズと画像インデックス対応
 const sizes=[20,28,38,50,65,82,105,130,165,205,250];
-const mobileScale=isMobile?0.85:1;
+const dogImages=[
+"images/inugame_size1.png",
+"images/inugame_size2.png",
+"images/inugame_size3.png",
+"images/inugame_size4.png",
+"images/inugame_size5.png",
+"images/inugame_size6.png",
+"images/inugame_size7.png",
+"images/inugame_size8.png",
+"images/inugame_size9.png",
+"images/inugame_size10.png",
+"images/inugame_size11.png"
+];
 
 let currentBall=null;
 let score=0;
-let highScore=localStorage.getItem("highScore")||0;
 let isGameOver=false;
 
-document.getElementById("highScore").innerText=highScore;
-
+// 🔹 ボール作成関数（サイズインデックスで自動画像対応）
 function createBall(sizeIndex,x,y){
-const radius=sizes[sizeIndex]*mobileScale;
-const ball=Bodies.circle(x,y,radius,{
-restitution:0.2,
-friction:0.3
-});
-ball.sizeIndex=sizeIndex;
-return ball;
+  const radius=sizes[sizeIndex];
+  const texture=dogImages[sizeIndex];
+
+  const ball=Bodies.circle(x,y,radius,{
+    restitution:0.2,
+    friction:0.3,
+    render:{sprite:{texture:texture,xScale:1,yScale:1}}
+  });
+
+  // 画像をロードしてスケーリング
+  const img=new Image();
+  img.src=texture;
+  img.onload=function(){
+    const scale=(radius*2)/Math.max(img.width,img.height);
+    ball.render.sprite.xScale=scale;
+    ball.render.sprite.yScale=scale;
+  };
+
+  ball.sizeIndex=sizeIndex;
+  return ball;
 }
 
+// 初期ボール生成
 function spawnBall(){
-if(isGameOver) return;
-const sizeIndex=Math.floor(Math.random()*3);
-currentBall=createBall(sizeIndex,centerX,topY);
-Body.setStatic(currentBall,true);
-World.add(world,currentBall);
+  if(isGameOver) return;
+  const sizeIndex=Math.floor(Math.random()*3); // 小さいボールから
+  currentBall=createBall(sizeIndex,centerX,topY);
+  Body.setStatic(currentBall,true);
+  World.add(world,currentBall);
 }
 spawnBall();
 
+// ボール操作
 function moveBall(x){
-if(!currentBall||isGameOver) return;
-const min=centerX-containerWidth/2+currentBall.circleRadius;
-const max=centerX+containerWidth/2-currentBall.circleRadius;
-x=Math.max(min,Math.min(max,x));
-Body.setPosition(currentBall,{x:x,y:topY});
+  if(!currentBall||isGameOver) return;
+  const min=centerX-containerWidth/2+currentBall.circleRadius;
+  const max=centerX+containerWidth/2-currentBall.circleRadius;
+  x=Math.max(min,Math.min(max,x));
+  Body.setPosition(currentBall,{x:x,y:topY});
 }
-
 function dropBall(){
-if(!currentBall||isGameOver) return;
-Body.setStatic(currentBall,false);
-currentBall=null;
-setTimeout(spawnBall,500);
+  if(!currentBall||isGameOver) return;
+  Body.setStatic(currentBall,false);
+  currentBall=null;
+  setTimeout(spawnBall,500);
 }
 
-window.addEventListener("mousemove",e=>{ if(!isMobile) moveBall(e.clientX); });
-window.addEventListener("click",()=>{ if(!isMobile) dropBall(); });
-window.addEventListener("touchmove",e=>{ if(isMobile) moveBall(e.touches[0].clientX); },{passive:false});
-window.addEventListener("touchend",()=>{ if(isMobile) dropBall(); });
+window.addEventListener("mousemove",e=>{if(!isMobile) moveBall(e.clientX);});
+window.addEventListener("click",()=>{if(!isMobile) dropBall();});
+window.addEventListener("touchmove",e=>{if(isMobile) moveBall(e.touches[0].clientX);},{passive:false});
+window.addEventListener("touchend",()=>{if(isMobile) dropBall();});
 
+// 合体処理
 Events.on(engine,"collisionStart",e=>{
-e.pairs.forEach(pair=>{
-const a=pair.bodyA;
-const b=pair.bodyB;
-if(a.sizeIndex===undefined||b.sizeIndex===undefined) return;
-if(a.sizeIndex!==b.sizeIndex) return;
-if(a.isMerging||b.isMerging) return;
-
-a.isMerging=true;
-b.isMerging=true;
-
-const newSize=a.sizeIndex+1;
-if(newSize>=sizes.length) return;
-
-const newBall=createBall(newSize,
-(a.position.x+b.position.x)/2,
-(a.position.y+b.position.y)/2
-);
-
-World.remove(world,a);
-World.remove(world,b);
-World.add(world,newBall);
-
-score+=(newSize+1)*10;
-document.getElementById("score").innerText=score;
-
-if(score>highScore){
-highScore=score;
-localStorage.setItem("highScore",highScore);
-document.getElementById("highScore").innerText=highScore;
-}
-});
+  e.pairs.forEach(pair=>{
+    const a=pair.bodyA;
+    const b=pair.bodyB;
+    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a.sizeIndex===b.sizeIndex){
+      const newSize=a.sizeIndex+1;
+      if(newSize<sizes.length){
+        const newBall=createBall(newSize,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2);
+        World.remove(world,a);
+        World.remove(world,b);
+        World.add(world,newBall);
+        score+=(newSize+1)*10;
+        document.getElementById("score").innerText=score;
+      }
+    }
+  });
 });
 
+// ゲームオーバー判定
 Events.on(engine,"afterUpdate",()=>{
-if(isGameOver) return;
-world.bodies.forEach(body=>{
-if(body.sizeIndex!==undefined){
-if(body.position.y - body.circleRadius > height){
-isGameOver=true;
-window.finalScore=score;
-document.getElementById("gameOver").style.display="block";
-}
-}
+  if(isGameOver) return;
+  world.bodies.forEach(body=>{
+    if(body.sizeIndex!==undefined && body.position.y-body.circleRadius>height){
+      isGameOver=true;
+      window.finalScore=score;
+      document.getElementById("gameOver").style.display="block";
+    }
+  });
 });
+</script>
+
+<!-- 🔥 世界ランキング -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast, remove } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+// Firebase初期化
+const firebaseConfig={
+  apiKey:"AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
+  authDomain:"shibainugame-1865a.firebaseapp.com",
+  databaseURL:"https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"shibainugame-1865a",
+  storageBucket:"shibainugame-1865a.appspot.com",
+  messagingSenderId:"278247707611",
+  appId:"1:278247707611:web:9a04085c0493fd2ee64dfe"
+};
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+
+// 🔹 ランキングリセット（最初に一度だけ）
+remove(ref(db,"ranking")).then(()=>console.log("ランキングリセット完了"));
+
+// スコア送信
+window.submitScore=function(){
+  const name=document.getElementById("playerName").value||"名無し";
+  push(ref(db,"ranking"),{name:name,score:window.finalScore,time:Date.now()});
+};
+
+// TOP5表示
+const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(5));
+onValue(rankingRef,(snapshot)=>{
+  const box=document.getElementById("ranking");
+  box.innerHTML="";
+  const data=[];
+  snapshot.forEach(child=>data.push(child.val()));
+  data.reverse();
+  data.forEach((item,i)=>{
+    if(i===0){
+      box.innerHTML+="🏆 <span style='color:gold'>"+item.name+" - "+item.score+"</span><br>";
+    }else{
+      box.innerHTML+=(i+1)+"位 "+item.name+" - "+item.score+"<br>";
+    }
+  });
 });
 </script>
 

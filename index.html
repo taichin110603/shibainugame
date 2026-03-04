@@ -12,22 +12,21 @@ body{
   margin:0;
   overflow:hidden;
   font-family:sans-serif;
-  background:linear-gradient(#fff4e6,#ffe0cc);
+  background:linear-gradient(#fff3e0,#ffd9b3);
 }
 
 #ui{
   position:absolute;
-  top:15px;
+  top:20px;
   right:20px;
-  text-align:right;
-  font-size:18px;
+  font-size:20px;
 }
 
 #ranking{
   position:absolute;
+  top:20px;
   left:20px;
-  top:15px;
-  width:200px;
+  width:220px;
   font-size:14px;
 }
 
@@ -37,18 +36,19 @@ body{
   left:50%;
   transform:translate(-50%,-50%);
   background:white;
-  padding:20px;
+  padding:25px;
   border-radius:15px;
   display:none;
   text-align:center;
 }
 
 input{
-  padding:5px;
+  padding:6px;
   margin-top:10px;
 }
+
 button{
-  padding:6px 10px;
+  padding:6px 12px;
   margin-top:10px;
   cursor:pointer;
 }
@@ -56,21 +56,19 @@ button{
 </head>
 <body>
 
-<div id="ui">
-  <div>Score: <span id="score">0</span></div>
-</div>
+<div id="ui">Score: <span id="score">0</span></div>
 
 <div id="ranking">
-  <b>🌎 World Ranking</b>
-  <div id="rankList"></div>
+<b>🌎 World Ranking</b>
+<div id="rankList"></div>
 </div>
 
 <div id="gameOverPanel">
-  <h2>GAME OVER</h2>
-  <div>名前を入力してランキング登録</div>
-  <input id="playerName" placeholder="名前">
-  <br>
-  <button onclick="sendScore()">送信してリトライ</button>
+<h2>GAME OVER</h2>
+<p>名前を入力してください</p>
+<input id="playerName" placeholder="名前">
+<br>
+<button onclick="sendScore()">送信してもう一度遊ぶ</button>
 </div>
 
 <script>
@@ -102,47 +100,52 @@ const panel = document.getElementById("gameOverPanel");
 
 const isMobile = window.innerWidth < 768;
 
-/* ===== 容器サイズ（スマホ大きめ） ===== */
-const cupWidth = isMobile ? 320 : 240;
-const cupHeight = isMobile ? 420 : 350;
+/* ===== 容器（さらに大きく） ===== */
+const cupWidth = isMobile ? 380 : 300;
+const cupHeight = isMobile ? 520 : 450;
 
 const cupX = window.innerWidth/2;
-const cupY = window.innerHeight*0.65;
+const cupY = window.innerHeight*0.7;
 
-/* ===== 壁 ===== */
 const walls = [
-  Bodies.rectangle(cupX - cupWidth/2, cupY, 20, cupHeight, {isStatic:true,render:{fillStyle:"#d2a679"}}),
-  Bodies.rectangle(cupX + cupWidth/2, cupY, 20, cupHeight, {isStatic:true,render:{fillStyle:"#d2a679"}}),
-  Bodies.rectangle(cupX, cupY + cupHeight/2, cupWidth, 20, {isStatic:true,render:{fillStyle:"#c68c53"}})
+  Bodies.rectangle(cupX - cupWidth/2, cupY, 30, cupHeight, {isStatic:true,render:{fillStyle:"#cc9966"}}),
+  Bodies.rectangle(cupX + cupWidth/2, cupY, 30, cupHeight, {isStatic:true,render:{fillStyle:"#cc9966"}}),
+  Bodies.rectangle(cupX, cupY + cupHeight/2, cupWidth, 30, {isStatic:true,render:{fillStyle:"#b37700"}})
 ];
+
 World.add(world,walls);
 
-/* ===== ボールサイズ（かなり小さく） ===== */
-const baseSize = isMobile ? 18 : 14;
+/* ===== サイズ ===== */
+const baseSize = isMobile ? 22 : 18;
+const sizes = Array.from({length:11},(_,i)=>baseSize + i*5);
 
-const sizes = Array.from({length:11},(_,i)=>baseSize + i*4);
+/* ===== 画像ボール生成 ===== */
+function createBall(x,y,index){
+  const ball = Bodies.circle(x,y,sizes[index],{
+    restitution:0.2,
+    render:{
+      sprite:{
+        texture:`images/ball${index}.png`,
+        xScale:(sizes[index]*2)/100,
+        yScale:(sizes[index]*2)/100
+      }
+    }
+  });
+  ball.sizeIndex = index;
+  return ball;
+}
 
-const colors = [
-  "#ffcc99","#ffb366","#ff9933","#ff8000","#ff6600",
-  "#ff4d00","#ff3300","#ff1a00","#e62e00","#cc2900","#b32400"
-];
-
-/* ===== ボール生成 ===== */
+/* ===== スポーン ===== */
 function spawnBall(){
   if(gameOver) return;
-
   const x = window.innerWidth/2;
-  currentBall = Bodies.circle(x,100,sizes[0],{
-    restitution:0.2,
-    render:{fillStyle:colors[0]}
-  });
-  currentBall.sizeIndex = 0;
+  currentBall = createBall(x,100,0);
   World.add(world,currentBall);
 }
 
 spawnBall();
 
-/* ===== 落下処理 ===== */
+/* ===== 落下 ===== */
 function dropBall(){
   currentBall = null;
   setTimeout(spawnBall,500);
@@ -161,18 +164,17 @@ Events.on(engine,"collisionStart",e=>{
   e.pairs.forEach(pair=>{
     const a = pair.bodyA;
     const b = pair.bodyB;
-    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a!==currentBall && b!==currentBall){
+
+    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined &&
+       a!==currentBall && b!==currentBall){
+
       if(a.sizeIndex === b.sizeIndex){
         if(a.sizeIndex >= sizes.length-1) return;
 
         World.remove(world,[a,b]);
 
         const newIndex = a.sizeIndex+1;
-        const newBall = Bodies.circle(a.position.x,a.position.y,sizes[newIndex],{
-          restitution:0.2,
-          render:{fillStyle:colors[newIndex]}
-        });
-        newBall.sizeIndex = newIndex;
+        const newBall = createBall(a.position.x,a.position.y,newIndex);
         World.add(world,newBall);
 
         score += (newIndex+1)*10;
@@ -182,17 +184,20 @@ Events.on(engine,"collisionStart",e=>{
   });
 });
 
-/* ===== ゲームオーバー判定 ===== */
+/* ===== ゲームオーバー（こぼれた時のみ） ===== */
 Events.on(engine,"afterUpdate",()=>{
+  if(gameOver) return;
+
   world.bodies.forEach(body=>{
-    if(body.position.y < cupY - cupHeight/2 - 30 && body.sizeIndex!==undefined){
-      endGame();
+    if(body.sizeIndex!==undefined){
+      if(body.position.y < cupY - cupHeight/2 - 50){
+        endGame();
+      }
     }
   });
 });
 
 function endGame(){
-  if(gameOver) return;
   gameOver = true;
   panel.style.display="block";
 }
@@ -207,7 +212,6 @@ function sendScore(){
   ranking = ranking.slice(0,10);
 
   localStorage.setItem("ranking",JSON.stringify(ranking));
-
   updateRanking();
 
   restartGame();
@@ -224,9 +228,18 @@ function updateRanking(){
 
 updateRanking();
 
-/* ===== リスタート ===== */
+/* ===== 即リスタート（reloadなし） ===== */
 function restartGame(){
-  location.reload();
+  panel.style.display="none";
+  score = 0;
+  scoreEl.textContent = 0;
+  gameOver = false;
+
+  world.bodies.slice().forEach(b=>{
+    if(!b.isStatic) World.remove(world,b);
+  });
+
+  spawnBall();
 }
 </script>
 </body>

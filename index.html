@@ -48,11 +48,11 @@ Render.run(render);
 Runner.run(Runner.create(),engine);
 
 /* ===========================
-   サイズ（超小サイズ 1/4）
+   サイズ（←ここだけ小さく）
 =========================== */
 
 const sizes = [
-  12,16,20,24,28,32,36,40,44  // ← 超小サイズ
+  6,8,10,12,14,16,18,20,22   // ← 前回の半分
 ];
 
 const images = [
@@ -70,11 +70,11 @@ const images = [
 let score = 0;
 
 /* ===========================
-   容器（下にずらす）
+   容器
 =========================== */
 
 const wallThickness = 40;
-const containerBottomY = 580;  // 下に配置
+const containerBottomY = 580;
 
 const leftWall = Bodies.rectangle(80,400,wallThickness,350,{isStatic:true,render:{fillStyle:"#d8cfc4"}});
 const rightWall = Bodies.rectangle(320,400,wallThickness,350,{isStatic:true,render:{fillStyle:"#d8cfc4"}});

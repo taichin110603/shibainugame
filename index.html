@@ -8,24 +8,41 @@
 <style>
 body{
   margin:0;
-  background:linear-gradient(#ffe0b2,#ffcc88); /* 暖色グラデ */
+  background:linear-gradient(#ffe0b2,#ffcc88);
   font-family:sans-serif;
   overflow:hidden;
+  text-align:center;
+}
+
+canvas{
+  display:block;
+  margin:0 auto;
 }
 
 #ui{
   position:absolute;
   right:20px;
   top:20px;
-  width:240px;
+  width:220px;
 }
 
 #ranking{
   background:rgba(255,255,255,0.9);
   padding:10px;
   border-radius:15px;
-  height:220px;
+  height:200px;
   overflow-y:auto;
+}
+
+#gameOver{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:white;
+  padding:20px;
+  border-radius:20px;
+  display:none;
 }
 
 button{
@@ -36,7 +53,6 @@ button{
   background:#ffb74d;
   cursor:pointer;
 }
-button:hover{ background:#ffa726; }
 </style>
 </head>
 <body>
@@ -44,68 +60,62 @@ button:hover{ background:#ffa726; }
 <div id="ui">
 <h2>Score: <span id="score">0</span></h2>
 <h3>High: <span id="highScore">0</span></h3>
-
-<input id="playerName" placeholder="名前">
-<button onclick="sendScore()">スコア送信</button>
-
 <h3>世界ランキング</h3>
 <div id="ranking"></div>
 </div>
 
+<div id="gameOver">
+<h2>GAME OVER</h2>
+<input id="playerName" placeholder="名前">
+<br>
+<button onclick="sendScore()">スコア送信</button>
+</div>
+
 <script type="module">
 
-/* ================= Firebase ================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } 
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit }
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "あなたのAPIキー",
-  authDomain: "あなたのID.firebaseapp.com",
-  projectId: "あなたのID"
+const firebaseConfig={
+  apiKey:"あなたのAPIキー",
+  authDomain:"あなたのID.firebaseapp.com",
+  projectId:"あなたのID"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
-/* ================= Matter ================= */
+const {Engine,Render,Runner,Bodies,World,Events,Body}=Matter;
 
-const { Engine, Render, Runner, Bodies, World, Events, Body } = Matter;
+const isMobile=window.innerWidth<768;
+const width=isMobile?window.innerWidth:420;
+const height=600;
 
-const isMobile = window.innerWidth < 768;
+const engine=Engine.create();
+const world=engine.world;
 
-const width = isMobile ? window.innerWidth : 420;
-const height = 600;
-
-const engine = Engine.create();
-const world = engine.world;
-
-const render = Render.create({
-  element: document.body,
-  engine: engine,
-  options: {
-    width: width,
-    height: height,
-    wireframes: false,
-    background: "transparent"
-  }
+const render=Render.create({
+  element:document.body,
+  engine:engine,
+  options:{width:width,height:height,wireframes:false,background:"transparent"}
 });
 
 Render.run(render);
-Runner.run(Runner.create(), engine);
+Runner.run(Runner.create(),engine);
 
-/* ================= 容器 ================= */
+/* ===== 容器中央 ===== */
 
-const containerWidth = isMobile ? width-40 : 380;
-const containerHeight = isMobile ? 560 : 520;
+const containerWidth=isMobile?width-40:380;
+const containerHeight=540;
 
-const ground = Bodies.rectangle(width/2,containerHeight+10,containerWidth,20,{ isStatic:true });
-const leftWall = Bodies.rectangle((width-containerWidth)/2,containerHeight/2,20,containerHeight,{ isStatic:true });
-const rightWall = Bodies.rectangle((width+containerWidth)/2,containerHeight/2,20,containerHeight,{ isStatic:true });
+const ground=Bodies.rectangle(width/2,containerHeight+10,containerWidth,20,{isStatic:true});
+const leftWall=Bodies.rectangle((width-containerWidth)/2,containerHeight/2,20,containerHeight,{isStatic:true});
+const rightWall=Bodies.rectangle((width+containerWidth)/2,containerHeight/2,20,containerHeight,{isStatic:true});
 
 World.add(world,[ground,leftWall,rightWall]);
 
-/* ================= ボール ================= */
+/* ===== ボール ===== */
 
 const ballImages=[
 "images/inugame_size1.png",
@@ -119,8 +129,8 @@ const ballImages=[
 "images/inugame_size9.png"
 ];
 
-/* 少し小さめ最適化 */
-const ballSizes=[14,20,26,32,40,50,62,76,92];
+/* さらに小さく */
+const ballSizes=[12,16,22,28,36,46,58,72,88];
 
 let score=0;
 let highScore=Number(localStorage.getItem("highScore")||0);
@@ -128,11 +138,10 @@ document.getElementById("highScore").innerText=highScore;
 
 let currentBall=null;
 let nextIndex=Math.floor(Math.random()*3);
+let isGameOver=false;
 
-/* 待機ボール生成 */
 function createBall(index,x,y,isStatic=true){
   const radius=ballSizes[index];
-
   const ball=Bodies.circle(x,y,radius,{
     isStatic:isStatic,
     restitution:0.3,
@@ -144,12 +153,12 @@ function createBall(index,x,y,isStatic=true){
       }
     }
   });
-
   ball.sizeIndex=index;
   return ball;
 }
 
 function spawnBall(){
+  if(isGameOver) return;
   currentBall=createBall(nextIndex,width/2,40,true);
   World.add(world,currentBall);
   nextIndex=Math.floor(Math.random()*3);
@@ -157,13 +166,13 @@ function spawnBall(){
 
 spawnBall();
 
-/* ================= 操作 ================= */
+/* ===== 操作 ===== */
 
 function moveBall(x){
   if(!currentBall) return;
-  const radius=currentBall.circleRadius;
-  const min=(width-containerWidth)/2+radius;
-  const max=(width+containerWidth)/2-radius;
+  const r=currentBall.circleRadius;
+  const min=(width-containerWidth)/2+r;
+  const max=(width+containerWidth)/2-r;
   x=Math.max(min,Math.min(max,x));
   Body.setPosition(currentBall,{x:x,y:40});
 }
@@ -175,23 +184,12 @@ function dropBall(){
   setTimeout(spawnBall,400);
 }
 
-/* PC */
-document.addEventListener("mousemove",e=>{
-  if(!isMobile) moveBall(e.offsetX);
-});
-document.addEventListener("click",()=>{
-  if(!isMobile) dropBall();
-});
+document.addEventListener("mousemove",e=>{if(!isMobile) moveBall(e.offsetX);});
+document.addEventListener("click",()=>{if(!isMobile) dropBall();});
+document.addEventListener("touchmove",e=>{if(isMobile) moveBall(e.touches[0].clientX);});
+document.addEventListener("touchend",()=>{if(isMobile) dropBall();});
 
-/* スマホ */
-document.addEventListener("touchmove",e=>{
-  if(isMobile) moveBall(e.touches[0].clientX);
-});
-document.addEventListener("touchend",()=>{
-  if(isMobile) dropBall();
-});
-
-/* ================= 合体 ================= */
+/* ===== 合体 ===== */
 
 Events.on(engine,"collisionStart",event=>{
   event.pairs.forEach(pair=>{
@@ -202,7 +200,6 @@ Events.on(engine,"collisionStart",event=>{
       if(a.sizeIndex===b.sizeIndex && a.sizeIndex<8){
 
         const newIndex=a.sizeIndex+1;
-        const radius=ballSizes[newIndex];
 
         World.remove(world,a);
         World.remove(world,b);
@@ -223,7 +220,20 @@ Events.on(engine,"collisionStart",event=>{
   });
 });
 
-/* ================= ランキング ================= */
+/* ===== ゲームオーバー ===== */
+
+Events.on(engine,"afterUpdate",()=>{
+  if(isGameOver) return;
+
+  world.bodies.forEach(body=>{
+    if(body.sizeIndex!==undefined && body.position.y<60){
+      isGameOver=true;
+      document.getElementById("gameOver").style.display="block";
+    }
+  });
+});
+
+/* ===== ランキング ===== */
 
 async function sendScore(){
   const name=document.getElementById("playerName").value;
@@ -236,7 +246,8 @@ async function sendScore(){
   });
 
   await loadRanking();
-  alert("送信完了！");
+
+  location.reload(); // 自動リトライ
 }
 
 async function loadRanking(){

@@ -11,7 +11,7 @@ body{
   margin:0;
   overflow:hidden;
   font-family:sans-serif;
-  background:linear-gradient(#fff0e6,#ffe0cc);
+  background:linear-gradient(#fff4ec,#ffe6d5);
 }
 #ui{
   position:absolute;
@@ -76,7 +76,7 @@ const render = Render.create({
     width:width,
     height:height,
     wireframes:false,
-    background:"#fff0e6"
+    background:"#fff4ec"
   }
 });
 
@@ -119,9 +119,9 @@ const images = [
 "images/inugame_size9.png"
 ];
 
-/* ===== 🔥 超小サイズ設定 ===== */
-const baseSize = isMobile ? 12 : 10;   // ← めちゃ小さく
-const sizes = Array.from({length:9},(_,i)=>baseSize + i*4);
+/* 🔥🔥 極小サイズ設定 🔥🔥 */
+const baseSize = 6;   // ← 半径6px（超小さい）
+const sizes = Array.from({length:9},(_,i)=>baseSize + i*3);
 
 function createBall(x,y,index){
   const ball = Bodies.circle(x,y,sizes[index],{
@@ -129,8 +129,8 @@ function createBall(x,y,index){
     render:{
       sprite:{
         texture:images[index],
-        xScale: (sizes[index]*2)/120,
-        yScale: (sizes[index]*2)/120
+        xScale:(sizes[index]*2)/150,
+        yScale:(sizes[index]*2)/150
       }
     }
   });
@@ -149,10 +149,10 @@ spawnBall();
 /* ===== 落下 ===== */
 function dropBall(){
   currentBall = null;
-  setTimeout(spawnBall,300);
+  setTimeout(spawnBall,250);
 }
-document.addEventListener("click",()=>{ if(currentBall && !isMobile) dropBall(); });
-document.addEventListener("touchend",()=>{ if(currentBall && isMobile) dropBall(); });
+document.addEventListener("click",()=>{ if(currentBall) dropBall(); });
+document.addEventListener("touchend",()=>{ if(currentBall) dropBall(); });
 
 /* ===== 合体 ===== */
 Events.on(engine,"collisionStart",event=>{

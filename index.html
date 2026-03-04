@@ -8,28 +8,37 @@
 <style>
 body{
   margin:0;
-  background:#f2f2f2;
-  text-align:center;
+  background:#fff8e7; /* ← あたたかい雰囲気 */
   font-family:sans-serif;
+  overflow:hidden;
 }
 
 #ui{
   position:absolute;
   right:20px;
   top:20px;
-  width:250px;
+  width:260px;
 }
 
 #ranking{
-  background:white;
+  background:rgba(255,255,255,0.85);
   padding:10px;
-  border-radius:10px;
-  height:300px;
+  border-radius:15px;
+  height:260px;
   overflow-y:auto;
 }
+
 button{
   padding:8px 15px;
-  margin-top:10px;
+  margin-top:8px;
+  border:none;
+  border-radius:10px;
+  background:#ffcc88;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#ffbb66;
 }
 </style>
 </head>
@@ -40,7 +49,7 @@ button{
 <h3>High: <span id="highScore">0</span></h3>
 
 <input id="playerName" placeholder="名前">
-<button onclick="sendScore()">送信</button>
+<button onclick="sendScore()">スコア送信</button>
 
 <h3>世界ランキング</h3>
 <div id="ranking"></div>
@@ -48,9 +57,7 @@ button{
 
 <script type="module">
 
-/* =========================
-   Firebase設定
-========================= */
+/* ================= Firebase ================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } 
@@ -59,15 +66,13 @@ from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "あなたのAPIキー",
   authDomain: "あなたのID.firebaseapp.com",
-  projectId: "あなたのID",
+  projectId: "あなたのID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* =========================
-   物理エンジン
-========================= */
+/* ================= Matter ================= */
 
 const { Engine, Render, Runner, Bodies, World, Events } = Matter;
 
@@ -81,16 +86,14 @@ const render = Render.create({
     width: 400,
     height: 600,
     wireframes: false,
-    background: "#fff"
+    background: "#fff8e7"
   }
 });
 
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-/* =========================
-   容器
-========================= */
+/* ================= 容器 ================= */
 
 const ground = Bodies.rectangle(200,580,380,20,{ isStatic:true });
 const leftWall = Bodies.rectangle(10,300,20,600,{ isStatic:true });
@@ -98,10 +101,9 @@ const rightWall = Bodies.rectangle(390,300,20,600,{ isStatic:true });
 
 World.add(world,[ground,leftWall,rightWall]);
 
-/* =========================
-   画像設定
-========================= */
+/* ================= ボール設定 ================= */
 
+/* 画像 小さい順対応 */
 const ballImages = [
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -114,30 +116,27 @@ const ballImages = [
 "images/inugame_size9.png"
 ];
 
-const ballSizes = [20,30,40,50,60,70,80,90,100];
+/* 前の自然サイズ */
+const ballSizes = [16,22,28,36,44,54,66,80,96];
 
-let currentBall = null;
 let score = 0;
+let currentBall = null;
 
-/* =========================
-   ハイスコア（ローカル）
-========================= */
+/* ================= ハイスコア ================= */
 
 let highScore = localStorage.getItem("highScore");
 if(!highScore) highScore = 0;
 highScore = Number(highScore);
 document.getElementById("highScore").innerText = highScore;
 
-/* =========================
-   ボール生成
-========================= */
+/* ================= ボール生成 ================= */
 
 function spawnBall(){
   const sizeIndex = Math.floor(Math.random()*3);
   const radius = ballSizes[sizeIndex];
 
   currentBall = Bodies.circle(200,50,radius,{
-    restitution:0.4,
+    restitution:0.3,
     render:{
       sprite:{
         texture: ballImages[sizeIndex],
@@ -153,17 +152,13 @@ function spawnBall(){
 
 spawnBall();
 
-/* =========================
-   クリックで落とす
-========================= */
+/* ================= クリックで落とす ================= */
 
 document.addEventListener("click",()=>{
   spawnBall();
 });
 
-/* =========================
-   合体処理
-========================= */
+/* ================= 合体処理 ================= */
 
 Events.on(engine,"collisionStart",event=>{
   event.pairs.forEach(pair=>{
@@ -173,8 +168,8 @@ Events.on(engine,"collisionStart",event=>{
     if(a.sizeIndex !== undefined && b.sizeIndex !== undefined){
       if(a.sizeIndex === b.sizeIndex && a.sizeIndex < 8){
 
-        const newSize = a.sizeIndex + 1;
-        const radius = ballSizes[newSize];
+        const newIndex = a.sizeIndex + 1;
+        const radius = ballSizes[newIndex];
 
         World.remove(world,a);
         World.remove(world,b);
@@ -182,17 +177,17 @@ Events.on(engine,"collisionStart",event=>{
         const newBall = Bodies.circle(a.position.x,a.position.y,radius,{
           render:{
             sprite:{
-              texture: ballImages[newSize],
+              texture: ballImages[newIndex],
               xScale:(radius*2)/200,
               yScale:(radius*2)/200
             }
           }
         });
 
-        newBall.sizeIndex = newSize;
+        newBall.sizeIndex = newIndex;
         World.add(world,newBall);
 
-        score += (newSize+1)*10;
+        score += (newIndex+1)*10;
         document.getElementById("score").innerText = score;
 
         if(score > highScore){
@@ -205,9 +200,7 @@ Events.on(engine,"collisionStart",event=>{
   });
 });
 
-/* =========================
-   世界ランキング送信
-========================= */
+/* ================= 世界ランキング送信 ================= */
 
 async function sendScore(){
   const name = document.getElementById("playerName").value;
@@ -219,21 +212,21 @@ async function sendScore(){
     date:Date.now()
   });
 
-  loadRanking();
+  await loadRanking();
 
   alert("送信完了！");
 
-  resetGame(); // ← 自動リスタート
+  resetGame(); /* 自動リスタート */
 }
 
-/* =========================
-   ランキング表示
-========================= */
+/* ================= ランキング表示 ================= */
 
 async function loadRanking(){
-  const q = query(collection(db,"ranking"),
-  orderBy("score","desc"),
-  limit(10));
+  const q = query(
+    collection(db,"ranking"),
+    orderBy("score","desc"),
+    limit(10)
+  );
 
   const snapshot = await getDocs(q);
 
@@ -251,9 +244,7 @@ async function loadRanking(){
 
 loadRanking();
 
-/* =========================
-   リセット（ランキング消えない）
-========================= */
+/* ================= リセット ================= */
 
 function resetGame(){
   World.clear(world,false);

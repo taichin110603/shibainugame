@@ -2,76 +2,112 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>犬スイカゲーム 🐶</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<title>INU GAME</title>
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
 
 <style>
-body,html{margin:0;overflow:hidden;width:100%;height:100%;background:linear-gradient(#ffb347,#ffcc70);font-family:sans-serif;}
-#containerVisual{position:absolute;left:50%;transform:translateX(-50%);border-left:8px solid #8b4513;border-right:8px solid #8b4513;border-bottom:8px solid #8b4513;border-bottom-left-radius:50px;border-bottom-right-radius:50px;background:rgba(255,200,150,0.25);z-index:1;}
-#scoreBox{position:absolute;top:15px;right:15px;z-index:10;}
-#rankingBox{position:absolute;top:15px;left:15px;width:180px;font-size:13px;background:white;padding:8px;border-radius:10px;z-index:10;}
-#gameOver{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:none;background:white;padding:20px;border-radius:10px;z-index:20;text-align:center;}
-canvas{position:absolute;top:0;left:0;}
-button{margin-top:10px;padding:6px 12px;border:none;border-radius:6px;background:#ff595e;color:white;}
-input{padding:5px;text-align:center;}
+body{
+  margin:0;
+  background:linear-gradient(#ffe0b2,#ffcc88); /* 暖色グラデ */
+  font-family:sans-serif;
+  overflow:hidden;
+}
+
+#ui{
+  position:absolute;
+  right:20px;
+  top:20px;
+  width:240px;
+}
+
+#ranking{
+  background:rgba(255,255,255,0.9);
+  padding:10px;
+  border-radius:15px;
+  height:220px;
+  overflow-y:auto;
+}
+
+button{
+  padding:8px 15px;
+  margin-top:8px;
+  border:none;
+  border-radius:10px;
+  background:#ffb74d;
+  cursor:pointer;
+}
+button:hover{ background:#ffa726; }
 </style>
 </head>
 <body>
 
-<div id="containerVisual"></div>
-<div id="scoreBox">Score : <span id="score">0</span></div>
-<div id="rankingBox"><b>🌍 世界ランキング TOP5</b><div id="ranking"></div></div>
+<div id="ui">
+<h2>Score: <span id="score">0</span></h2>
+<h3>High: <span id="highScore">0</span></h3>
 
-<div id="gameOver">
-<h2>GAME OVER</h2>
-<input id="playerName" maxlength="5" placeholder="名前(5文字)">
-<br>
-<button onclick="submitScore()">スコア送信</button>
-<br>
-<button onclick="location.reload()">Retry</button>
+<input id="playerName" placeholder="名前">
+<button onclick="sendScore()">スコア送信</button>
+
+<h3>世界ランキング</h3>
+<div id="ranking"></div>
 </div>
 
-<script>
-const {Engine,Render,Runner,World,Bodies,Body,Events}=Matter;
+<script type="module">
 
-const width=window.innerWidth;
-const height=window.innerHeight;
-const isMobile=width<768;
+/* ================= Firebase ================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const engine=Engine.create();
-engine.world.gravity.y=1;
-const world=engine.world;
+const firebaseConfig = {
+  apiKey: "あなたのAPIキー",
+  authDomain: "あなたのID.firebaseapp.com",
+  projectId: "あなたのID"
+};
 
-const render=Render.create({
-element:document.body,engine,
-options:{width,height,wireframes:false,background:"transparent"}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ================= Matter ================= */
+
+const { Engine, Render, Runner, Bodies, World, Events, Body } = Matter;
+
+const isMobile = window.innerWidth < 768;
+
+const width = isMobile ? window.innerWidth : 420;
+const height = 600;
+
+const engine = Engine.create();
+const world = engine.world;
+
+const render = Render.create({
+  element: document.body,
+  engine: engine,
+  options: {
+    width: width,
+    height: height,
+    wireframes: false,
+    background: "transparent"
+  }
 });
+
 Render.run(render);
-Runner.run(Runner.create(),engine);
+Runner.run(Runner.create(), engine);
 
-// 容器
-const containerWidth=isMobile?width*0.9:460;
-const containerHeight=isMobile?height*0.65:560;
-const centerX=width/2;
-const topY=isMobile?height*0.25:height*0.2;
-const bottomY=topY+containerHeight;
+/* ================= 容器 ================= */
 
-const visual=document.getElementById("containerVisual");
-visual.style.width=containerWidth+"px";
-visual.style.height=containerHeight+"px";
-visual.style.top=topY+"px";
+const containerWidth = isMobile ? width-40 : 380;
+const containerHeight = isMobile ? 560 : 520;
 
-World.add(world,[
-Bodies.rectangle(centerX-containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{isStatic:true}),
-Bodies.rectangle(centerX+containerWidth/2,bottomY-containerHeight/2,40,containerHeight,{isStatic:true}),
-Bodies.rectangle(centerX,bottomY+30,containerWidth,60,{isStatic:true})
-]);
+const ground = Bodies.rectangle(width/2,containerHeight+10,containerWidth,20,{ isStatic:true });
+const leftWall = Bodies.rectangle((width-containerWidth)/2,containerHeight/2,20,containerHeight,{ isStatic:true });
+const rightWall = Bodies.rectangle((width+containerWidth)/2,containerHeight/2,20,containerHeight,{ isStatic:true });
 
-// サイズと画像（小さい順）
-const sizes=[20,28,38,50,65,82,100,125,160];
-const dogImages=[
+World.add(world,[ground,leftWall,rightWall]);
+
+/* ================= ボール ================= */
+
+const ballImages=[
 "images/inugame_size1.png",
 "images/inugame_size2.png",
 "images/inugame_size3.png",
@@ -83,136 +119,143 @@ const dogImages=[
 "images/inugame_size9.png"
 ];
 
-let currentBall=null;
-let score=0;
-let isGameOver=false;
+/* 少し小さめ最適化 */
+const ballSizes=[14,20,26,32,40,50,62,76,92];
 
-function createBall(sizeIndex,x,y){
-  const radius=sizes[sizeIndex];
-  const texture=dogImages[sizeIndex];
+let score=0;
+let highScore=Number(localStorage.getItem("highScore")||0);
+document.getElementById("highScore").innerText=highScore;
+
+let currentBall=null;
+let nextIndex=Math.floor(Math.random()*3);
+
+/* 待機ボール生成 */
+function createBall(index,x,y,isStatic=true){
+  const radius=ballSizes[index];
 
   const ball=Bodies.circle(x,y,radius,{
-    restitution:0.2,
-    friction:0.3,
-    render:{sprite:{texture:texture,xScale:1,yScale:1}}
+    isStatic:isStatic,
+    restitution:0.3,
+    render:{
+      sprite:{
+        texture:ballImages[index],
+        xScale:(radius*2)/200,
+        yScale:(radius*2)/200
+      }
+    }
   });
 
-  const img=new Image();
-  img.src=texture;
-  img.onload=function(){
-    const scale=(radius*2)/Math.max(img.width,img.height);
-    ball.render.sprite.xScale=scale;
-    ball.render.sprite.yScale=scale;
-  };
-
-  ball.sizeIndex=sizeIndex;
+  ball.sizeIndex=index;
   return ball;
 }
 
 function spawnBall(){
-  if(isGameOver) return;
-  const sizeIndex=Math.floor(Math.random()*3);
-  currentBall=createBall(sizeIndex,centerX,topY);
-  Body.setStatic(currentBall,true);
+  currentBall=createBall(nextIndex,width/2,40,true);
   World.add(world,currentBall);
+  nextIndex=Math.floor(Math.random()*3);
 }
+
 spawnBall();
 
+/* ================= 操作 ================= */
+
 function moveBall(x){
-  if(!currentBall||isGameOver) return;
-  const min=centerX-containerWidth/2+currentBall.circleRadius;
-  const max=centerX+containerWidth/2-currentBall.circleRadius;
+  if(!currentBall) return;
+  const radius=currentBall.circleRadius;
+  const min=(width-containerWidth)/2+radius;
+  const max=(width+containerWidth)/2-radius;
   x=Math.max(min,Math.min(max,x));
-  Body.setPosition(currentBall,{x:x,y:topY});
+  Body.setPosition(currentBall,{x:x,y:40});
 }
 
 function dropBall(){
-  if(!currentBall||isGameOver) return;
+  if(!currentBall) return;
   Body.setStatic(currentBall,false);
   currentBall=null;
-  setTimeout(spawnBall,500);
+  setTimeout(spawnBall,400);
 }
 
-window.addEventListener("mousemove",e=>{if(!isMobile) moveBall(e.clientX);});
-window.addEventListener("click",()=>{if(!isMobile) dropBall();});
-window.addEventListener("touchmove",e=>{if(isMobile) moveBall(e.touches[0].clientX);},{passive:false});
-window.addEventListener("touchend",()=>{if(isMobile) dropBall();});
+/* PC */
+document.addEventListener("mousemove",e=>{
+  if(!isMobile) moveBall(e.offsetX);
+});
+document.addEventListener("click",()=>{
+  if(!isMobile) dropBall();
+});
 
-Events.on(engine,"collisionStart",e=>{
-  e.pairs.forEach(pair=>{
+/* スマホ */
+document.addEventListener("touchmove",e=>{
+  if(isMobile) moveBall(e.touches[0].clientX);
+});
+document.addEventListener("touchend",()=>{
+  if(isMobile) dropBall();
+});
+
+/* ================= 合体 ================= */
+
+Events.on(engine,"collisionStart",event=>{
+  event.pairs.forEach(pair=>{
     const a=pair.bodyA;
     const b=pair.bodyB;
-    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined && a.sizeIndex===b.sizeIndex){
-      const newSize=a.sizeIndex+1;
-      if(newSize<sizes.length){
-        const newBall=createBall(newSize,(a.position.x+b.position.x)/2,(a.position.y+b.position.y)/2);
+
+    if(a.sizeIndex!==undefined && b.sizeIndex!==undefined){
+      if(a.sizeIndex===b.sizeIndex && a.sizeIndex<8){
+
+        const newIndex=a.sizeIndex+1;
+        const radius=ballSizes[newIndex];
+
         World.remove(world,a);
         World.remove(world,b);
+
+        const newBall=createBall(newIndex,a.position.x,a.position.y,false);
         World.add(world,newBall);
-        score+=(newSize+1)*10;
+
+        score+=(newIndex+1)*10;
         document.getElementById("score").innerText=score;
+
+        if(score>highScore){
+          highScore=score;
+          localStorage.setItem("highScore",highScore);
+          document.getElementById("highScore").innerText=highScore;
+        }
       }
     }
   });
 });
 
-Events.on(engine,"afterUpdate",()=>{
-  if(isGameOver) return;
-  world.bodies.forEach(body=>{
-    if(body.sizeIndex!==undefined && body.position.y-body.circleRadius>height){
-      isGameOver=true;
-      window.finalScore=score;
-      document.getElementById("gameOver").style.display="block";
-    }
-  });
-});
-</script>
+/* ================= ランキング ================= */
 
-<!-- 世界ランキング（消えない版） -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+async function sendScore(){
+  const name=document.getElementById("playerName").value;
+  if(!name) return alert("名前を入力してね");
 
-const firebaseConfig={
-  apiKey:"AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
-  authDomain:"shibainugame-1865a.firebaseapp.com",
-  databaseURL:"https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:"shibainugame-1865a",
-  storageBucket:"shibainugame-1865a.appspot.com",
-  messagingSenderId:"278247707611",
-  appId:"1:278247707611:web:9a04085c0493fd2ee64dfe"
-};
-
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
-
-window.submitScore=function(){
-  const name=document.getElementById("playerName").value||"名無し";
-  push(ref(db,"ranking"),{
+  await addDoc(collection(db,"ranking"),{
     name:name,
-    score:window.finalScore,
-    time:Date.now()
+    score:score,
+    date:Date.now()
   });
-  setTimeout(()=>location.reload(),600);
-};
 
-const rankingRef=query(ref(db,"ranking"),orderByChild("score"),limitToLast(5));
+  await loadRanking();
+  alert("送信完了！");
+}
 
-onValue(rankingRef,(snapshot)=>{
-  const box=document.getElementById("ranking");
-  box.innerHTML="";
-  const data=[];
-  snapshot.forEach(child=>data.push(child.val()));
-  data.reverse();
-  data.forEach((item,i)=>{
-    if(i===0){
-      box.innerHTML+="🏆 <span style='color:gold'>"+item.name+" - "+item.score+"</span><br>";
-    }else{
-      box.innerHTML+=(i+1)+"位 "+item.name+" - "+item.score+"<br>";
-    }
+async function loadRanking(){
+  const q=query(collection(db,"ranking"),orderBy("score","desc"),limit(5));
+  const snapshot=await getDocs(q);
+
+  const rankingDiv=document.getElementById("ranking");
+  rankingDiv.innerHTML="";
+
+  let rank=1;
+  snapshot.forEach(doc=>{
+    const data=doc.data();
+    rankingDiv.innerHTML+=rank+"位 "+data.name+" : "+data.score+"<br>";
+    rank++;
   });
-});
+}
+
+loadRanking();
+
 </script>
-
 </body>
 </html>

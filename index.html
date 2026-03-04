@@ -11,7 +11,7 @@ body{
   margin:0;
   overflow:hidden;
   font-family:sans-serif;
-  background:linear-gradient(#ffeedd,#ffd8b5);
+  background:linear-gradient(#fff0e6,#ffe0cc);
 }
 #ui{
   position:absolute;
@@ -76,7 +76,7 @@ const render = Render.create({
     width:width,
     height:height,
     wireframes:false,
-    background:"#ffeedd"
+    background:"#fff0e6"
   }
 });
 
@@ -106,7 +106,7 @@ World.add(world,[
   Bodies.rectangle(cupX, cupY + cupHeight/2, cupWidth, 30,{isStatic:true,render:{fillStyle:"#a47148"}})
 ]);
 
-/* ===== 画像リスト（あなたの名前対応） ===== */
+/* ===== 画像 ===== */
 const images = [
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -119,17 +119,18 @@ const images = [
 "images/inugame_size9.png"
 ];
 
-/* ===== サイズ ===== */
-const baseSize = isMobile ? 25 : 20;
-const sizes = Array.from({length:9},(_,i)=>baseSize + i*6);
+/* ===== 🔥 超小サイズ設定 ===== */
+const baseSize = isMobile ? 12 : 10;   // ← めちゃ小さく
+const sizes = Array.from({length:9},(_,i)=>baseSize + i*4);
 
-/* ===== ボール生成 ===== */
 function createBall(x,y,index){
   const ball = Bodies.circle(x,y,sizes[index],{
     restitution:0.2,
     render:{
       sprite:{
-        texture:images[index]
+        texture:images[index],
+        xScale: (sizes[index]*2)/120,
+        yScale: (sizes[index]*2)/120
       }
     }
   });
@@ -148,7 +149,7 @@ spawnBall();
 /* ===== 落下 ===== */
 function dropBall(){
   currentBall = null;
-  setTimeout(spawnBall,400);
+  setTimeout(spawnBall,300);
 }
 document.addEventListener("click",()=>{ if(currentBall && !isMobile) dropBall(); });
 document.addEventListener("touchend",()=>{ if(currentBall && isMobile) dropBall(); });

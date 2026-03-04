@@ -2,111 +2,59 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inu Merge Game</title>
+<title>Shiba Inu Game</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-
 <style>
 body{
   margin:0;
   overflow:hidden;
+  background:linear-gradient(to bottom,#fff7f0,#ffe8d9);
   font-family:sans-serif;
-  background:linear-gradient(#fff4ec,#ffe6d5);
 }
 #ui{
   position:absolute;
   top:20px;
-  right:20px;
+  right:30px;
   font-size:20px;
-  color:#6b3e26;
 }
-#ranking{
-  position:absolute;
-  top:20px;
-  left:20px;
-  width:200px;
-  font-size:14px;
-  color:#6b3e26;
-}
-#gameOverPanel{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  background:white;
-  padding:25px;
-  border-radius:15px;
-  display:none;
-  text-align:center;
-}
-input{padding:6px;margin-top:10px;}
-button{padding:6px 12px;margin-top:10px;cursor:pointer;}
+#score{margin-bottom:10px;}
+canvas{display:block;}
 </style>
 </head>
 <body>
 
-<div id="ui">Score: <span id="score">0</span></div>
-
-<div id="ranking">
-<b>🌎 World Ranking</b>
-<div id="rankList"></div>
-</div>
-
-<div id="gameOverPanel">
-<h2>GAME OVER</h2>
-<p>名前を入力</p>
-<input id="playerName" placeholder="名前">
-<br>
-<button onclick="sendScore()">送信してリトライ</button>
+<div id="ui">
+  <div id="score">Score: 0</div>
 </div>
 
 <script>
-const {Engine,Render,Runner,World,Bodies,Events} = Matter;
+const {Engine,Render,Runner,World,Bodies,Body,Events} = Matter;
 
 const engine = Engine.create();
 const world = engine.world;
 
-const width = window.innerWidth;
-const height = window.innerHeight;
-
 const render = Render.create({
-  element:document.body,
-  engine:engine,
+  element: document.body,
+  engine: engine,
   options:{
-    width:width,
-    height:height,
+    width:400,
+    height:600,
     wireframes:false,
-    background:"#fff4ec"
+    background:"transparent"
   }
 });
 
 Render.run(render);
 Runner.run(Runner.create(),engine);
 
-let score = 0;
-let currentBall = null;
-let gameOver = false;
-let overTimer = 0;
+/* ===========================
+   サイズ（超小サイズ 1/4）
+=========================== */
 
-const scoreEl = document.getElementById("score");
-const panel = document.getElementById("gameOverPanel");
+const sizes = [
+  12,16,20,24,28,32,36,40,44  // ← 超小サイズ
+];
 
-const isMobile = width < 768;
-
-/* ===== 容器 ===== */
-const cupWidth = isMobile ? 380 : 320;
-const cupHeight = isMobile ? 520 : 480;
-
-const cupX = width/2;
-const cupY = height*0.72;
-
-World.add(world,[
-  Bodies.rectangle(cupX - cupWidth/2, cupY, 30, cupHeight,{isStatic:true,render:{fillStyle:"#c89f7b"}}),
-  Bodies.rectangle(cupX + cupWidth/2, cupY, 30, cupHeight,{isStatic:true,render:{fillStyle:"#c89f7b"}}),
-  Bodies.rectangle(cupX, cupY + cupHeight/2, cupWidth, 30,{isStatic:true,render:{fillStyle:"#a47148"}})
-]);
-
-/* ===== 画像 ===== */
 const images = [
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -119,136 +67,99 @@ const images = [
 "images/inugame_size9.png"
 ];
 
-/* 🔥🔥 極小サイズ設定 🔥🔥 */
-const baseSize = 6;   // ← 半径6px（超小さい）
-const sizes = Array.from({length:9},(_,i)=>baseSize + i*3);
+let score = 0;
 
-function createBall(x,y,index){
-  const ball = Bodies.circle(x,y,sizes[index],{
+/* ===========================
+   容器（下にずらす）
+=========================== */
+
+const wallThickness = 40;
+const containerBottomY = 580;  // 下に配置
+
+const leftWall = Bodies.rectangle(80,400,wallThickness,350,{isStatic:true,render:{fillStyle:"#d8cfc4"}});
+const rightWall = Bodies.rectangle(320,400,wallThickness,350,{isStatic:true,render:{fillStyle:"#d8cfc4"}});
+const ground = Bodies.rectangle(200,containerBottomY,280,wallThickness,{isStatic:true,render:{fillStyle:"#cbbeb0"}});
+
+World.add(world,[leftWall,rightWall,ground]);
+
+/* ===========================
+   ボール生成
+=========================== */
+
+let currentBall = null;
+
+function createBall(sizeIndex,x=200){
+  const radius = sizes[sizeIndex];
+
+  const ball = Bodies.circle(x,50,radius,{
     restitution:0.2,
+    friction:0.1,
     render:{
       sprite:{
-        texture:images[index],
-        xScale:(sizes[index]*2)/150,
-        yScale:(sizes[index]*2)/150
+        texture:images[sizeIndex],
+        xScale:(radius*2)/200,
+        yScale:(radius*2)/200
       }
     }
   });
-  ball.sizeIndex = index;
+
+  ball.sizeIndex = sizeIndex;
+  World.add(world,ball);
   return ball;
 }
 
-/* ===== スポーン ===== */
 function spawnBall(){
-  if(gameOver) return;
-  currentBall = createBall(width/2,120,0);
-  World.add(world,currentBall);
+  const randomIndex = Math.floor(Math.random()*3);
+  currentBall = createBall(randomIndex);
 }
+
 spawnBall();
 
-/* ===== 落下 ===== */
-function dropBall(){
-  currentBall = null;
-  setTimeout(spawnBall,250);
-}
-document.addEventListener("click",()=>{ if(currentBall) dropBall(); });
-document.addEventListener("touchend",()=>{ if(currentBall) dropBall(); });
+/* ===========================
+   操作
+=========================== */
 
-/* ===== 合体 ===== */
+document.addEventListener("mousemove",e=>{
+  if(currentBall){
+    Body.setPosition(currentBall,{x:e.clientX,y:50});
+  }
+});
+
+document.addEventListener("click",()=>{
+  if(currentBall){
+    currentBall = null;
+    setTimeout(spawnBall,500);
+  }
+});
+
+/* ===========================
+   合体処理
+=========================== */
+
 Events.on(engine,"collisionStart",event=>{
   event.pairs.forEach(pair=>{
     const a = pair.bodyA;
     const b = pair.bodyB;
 
-    if(a.sizeIndex!==undefined &&
-       b.sizeIndex!==undefined &&
-       a!==currentBall &&
-       b!==currentBall &&
-       a.sizeIndex===b.sizeIndex &&
-       a.sizeIndex < sizes.length-1){
+    if(a.sizeIndex !== undefined && b.sizeIndex !== undefined && a !== currentBall && b !== currentBall){
 
-        World.remove(world,[a,b]);
+      if(a.sizeIndex === b.sizeIndex && a.sizeIndex < sizes.length-1){
 
-        const newBall = createBall(
-          a.position.x,
-          a.position.y,
-          a.sizeIndex+1
-        );
-        World.add(world,newBall);
+        const newIndex = a.sizeIndex + 1;
+        const newX = (a.position.x + b.position.x)/2;
+        const newY = (a.position.y + b.position.y)/2;
 
-        score += (a.sizeIndex+1)*10;
-        scoreEl.textContent = score;
-    }
-  });
-});
+        World.remove(world,a);
+        World.remove(world,b);
 
-/* ===== ゲームオーバー ===== */
-Events.on(engine,"afterUpdate",()=>{
-  if(gameOver) return;
+        createBall(newIndex,newX);
 
-  let overflow = false;
-
-  world.bodies.forEach(body=>{
-    if(body.sizeIndex!==undefined){
-      if(body.position.y < cupY - cupHeight/2 - 40){
-        overflow = true;
+        score += (newIndex+1)*10;
+        document.getElementById("score").innerText="Score: "+score;
       }
     }
   });
-
-  if(overflow){
-    overTimer++;
-    if(overTimer > 120){
-      endGame();
-    }
-  }else{
-    overTimer = 0;
-  }
 });
-
-function endGame(){
-  gameOver = true;
-  panel.style.display="block";
-}
-
-/* ===== ランキング ===== */
-function sendScore(){
-  const name = document.getElementById("playerName").value || "名無し";
-
-  let ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
-  ranking.push({name,score});
-  ranking.sort((a,b)=>b.score-a.score);
-  ranking = ranking.slice(0,10);
-  localStorage.setItem("ranking",JSON.stringify(ranking));
-  updateRanking();
-
-  restartGame();
-}
-
-function updateRanking(){
-  const ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
-  const list = document.getElementById("rankList");
-  list.innerHTML="";
-  ranking.forEach((r,i)=>{
-    list.innerHTML += `<div>${i+1}. ${r.name} - ${r.score}</div>`;
-  });
-}
-updateRanking();
-
-/* ===== リセット ===== */
-function restartGame(){
-  panel.style.display="none";
-  score = 0;
-  scoreEl.textContent = 0;
-  gameOver = false;
-  overTimer = 0;
-
-  world.bodies.slice().forEach(b=>{
-    if(!b.isStatic) World.remove(world,b);
-  });
-
-  spawnBall();
-}
 </script>
 </body>
 </html>

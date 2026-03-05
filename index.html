@@ -26,7 +26,7 @@ position:absolute;
 top:50%;
 left:50%;
 transform:translate(-50%,-50%);
-font-size:50px;
+font-size:60px;
 color:red;
 display:none;
 }
@@ -92,19 +92,15 @@ document.getElementById("best").innerText = best;
 
 }
 
-/* 容器 */
+/* 容器位置（かなり上に変更） */
 
-const leftWall = Bodies.rectangle(80,420,20,350,{isStatic:true});
-const rightWall = Bodies.rectangle(320,420,20,350,{isStatic:true});
-const floor = Bodies.rectangle(200,580,260,20,{isStatic:true});
-
-/* ゲームオーバーライン（少し上） */
-
-const gameoverLine = 150;
+const leftWall = Bodies.rectangle(80,350,20,350,{isStatic:true});
+const rightWall = Bodies.rectangle(320,350,20,350,{isStatic:true});
+const floor = Bodies.rectangle(200,500,260,20,{isStatic:true});
 
 World.add(world,[leftWall,rightWall,floor]);
 
-/* ボール設定 */
+/* ボール */
 
 const sizes = [
 20,25,30,35,40,45,50,55,60,65,70
@@ -127,7 +123,7 @@ const images = [
 let currentBall = null;
 let canDrop = true;
 
-/* ボール作成 */
+/* ボール生成 */
 
 function createBall(x,sizeIndex){
 
@@ -215,16 +211,13 @@ world.bodies.forEach(b=>{
 
 if(b.sizeIndex !== undefined){
 
-/* ボールが静止に近い時だけ判定 */
+/* 画面外に落ちたらゲームオーバー */
 
-if(Math.abs(b.velocity.y) < 0.5){
-
-if(b.position.y < gameoverLine){
+if(b.position.y > height + 50){
 
 document.getElementById("gameover").style.display="block";
 
 Engine.clear(engine);
-}
 
 }
 

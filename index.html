@@ -61,7 +61,7 @@ button{padding:6px 12px;margin-top:10px;cursor:pointer;}
 </div>
 
 <script>
-const {Engine,Render,Runner,World,Bodies,Events} = Matter;
+const {Engine,Render,Runner,World,Bodies,Events,Body} = Matter;
 
 const engine = Engine.create();
 const world = engine.world;
@@ -100,9 +100,12 @@ const cupHeight = isMobile ? 520 : 480;
 const cupX = width/2;
 const cupY = height*0.72;
 
+const leftWallX = cupX - cupWidth/2;
+const rightWallX = cupX + cupWidth/2;
+
 World.add(world,[
-  Bodies.rectangle(cupX - cupWidth/2, cupY, 30, cupHeight,{isStatic:true,render:{fillStyle:"#c89f7b"}}),
-  Bodies.rectangle(cupX + cupWidth/2, cupY, 30, cupHeight,{isStatic:true,render:{fillStyle:"#c89f7b"}}),
+  Bodies.rectangle(leftWallX, cupY, 30, cupHeight,{isStatic:true,render:{fillStyle:"#c89f7b"}}),
+  Bodies.rectangle(rightWallX, cupY, 30, cupHeight,{isStatic:true,render:{fillStyle:"#c89f7b"}}),
   Bodies.rectangle(cupX, cupY + cupHeight/2, cupWidth, 30,{isStatic:true,render:{fillStyle:"#a47148"}})
 ]);
 
@@ -119,8 +122,8 @@ const images = [
 "images/inugame_size9.png"
 ];
 
-/* 🔥🔥 超極小サイズ設定（ここだけ変更）🔥🔥 */
-const baseSize = 3;   // ← 半径3px
+/* ===== ボールサイズ ===== */
+const baseSize = 3;
 const sizes = Array.from({length:9},(_,i)=>baseSize + i*2);
 
 function createBall(x,y,index){
@@ -146,15 +149,55 @@ function spawnBall(){
 }
 spawnBall();
 
+/* ===== マウス移動（PC） ===== */
+document.addEventListener("mousemove",(e)=>{
+  if(!currentBall || gameOver) return;
+
+  let x = e.clientX;
+
+  if(x < leftWallX + 20) x = leftWallX + 20;
+  if(x > rightWallX - 20) x = rightWallX - 20;
+
+  Body.setPosition(currentBall,{x:x,y:120});
+});
+
+/* ===== スマホ移動 ===== */
+document.addEventListener("touchmove",(e)=>{
+  if(!currentBall || gameOver) return;
+
+  let x = e.touches[0].clientX;
+
+  if(x < leftWallX + 20) x = leftWallX + 20;
+  if(x > rightWallX - 20) x = rightWallX - 20;
+
+  Body.setPosition(currentBall,{x:x,y:120});
+});
+
 /* ===== 落下 ===== */
-function dropBall(){
+
+function dropBall(x){
+
+  if(!currentBall) return;
+
+  if(x < leftWallX || x > rightWallX) return;
+
   currentBall = null;
-  setTimeout(spawnBall,250);
+  setTimeout(spawnBall,300);
 }
-document.addEventListener("click",()=>{ if(currentBall) dropBall(); });
-document.addEventListener("touchend",()=>{ if(currentBall) dropBall(); });
+
+/* PCクリック */
+document.addEventListener("click",(e)=>{
+  dropBall(e.clientX);
+});
+
+/* スマホ指離し */
+document.addEventListener("touchend",(e)=>{
+  const x = e.changedTouches[0].clientX;
+  dropBall(x);
+});
 
 /* ===== 合体 ===== */
+
 Events.on(engine,"collisionStart",event=>{
   event.pairs.forEach(pair=>{
     const a = pair.bodyA;
@@ -174,6 +217,7 @@ Events.on(engine,"collisionStart",event=>{
           a.position.y,
           a.sizeIndex+1
         );
+
         World.add(world,newBall);
 
         score += (a.sizeIndex+1)*10;
@@ -183,7 +227,9 @@ Events.on(engine,"collisionStart",event=>{
 });
 
 /* ===== ゲームオーバー ===== */
+
 Events.on(engine,"afterUpdate",()=>{
+
   if(gameOver) return;
 
   let overflow = false;
@@ -204,6 +250,7 @@ Events.on(engine,"afterUpdate",()=>{
   }else{
     overTimer = 0;
   }
+
 });
 
 function endGame(){
@@ -212,34 +259,52 @@ function endGame(){
 }
 
 /* ===== ランキング ===== */
+
 function sendScore(){
+
   const name = document.getElementById("playerName").value || "名無し";
 
   let ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
+
   ranking.push({name,score});
+
   ranking.sort((a,b)=>b.score-a.score);
+
   ranking = ranking.slice(0,10);
+
   localStorage.setItem("ranking",JSON.stringify(ranking));
+
   updateRanking();
 
   restartGame();
+
 }
 
 function updateRanking(){
+
   const ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
+
   const list = document.getElementById("rankList");
+
   list.innerHTML="";
+
   ranking.forEach((r,i)=>{
     list.innerHTML += `<div>${i+1}. ${r.name} - ${r.score}</div>`;
   });
+
 }
+
 updateRanking();
 
 /* ===== リセット ===== */
+
 function restartGame(){
+
   panel.style.display="none";
+
   score = 0;
   scoreEl.textContent = 0;
+
   gameOver = false;
   overTimer = 0;
 
@@ -248,7 +313,9 @@ function restartGame(){
   });
 
   spawnBall();
+
 }
+
 </script>
 </body>
 </html>

@@ -101,7 +101,9 @@ const cupWidth = isMobile ? 380 : 320;
 const cupHeight = isMobile ? 520 : 480;
 
 const cupX = width/2;
-const cupY = height*0.72;
+
+/* ★ここを変更（0.72 → 0.65） */
+const cupY = height*0.65;
 
 const leftWallX = cupX - cupWidth/2;
 const rightWallX = cupX + cupWidth/2;
@@ -288,7 +290,7 @@ if(gameOver) return;
 
 world.bodies.forEach(body=>{
 
-if(body.sizeIndex!==undefined && !body.isStatic){  
+if(body.sizeIndex!==undefined && !body.isStatic){
 
 if(body.position.y > height + 50){
 endGame();

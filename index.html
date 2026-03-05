@@ -101,8 +101,6 @@ const cupWidth = isMobile ? 380 : 320;
 const cupHeight = isMobile ? 520 : 480;
 
 const cupX = width/2;
-
-/* ★ここを変更（0.72 → 0.65） */
 const cupY = height*0.65;
 
 const leftWallX = cupX - cupWidth/2;
@@ -132,10 +130,19 @@ const images = [
 
 ];
 
-/* ===== サイズ ===== */
+/* ===== ボールサイズ（修正） ===== */
 
-const baseSize = 3;
-const sizes = Array.from({length:9},(_,i)=>baseSize + i*2);
+const sizes = [
+12,
+18,
+26,
+36,
+48,
+64,
+82,
+104,
+130
+];
 
 /* ===== ボール作成 ===== */
 

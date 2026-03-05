@@ -89,7 +89,6 @@ Runner.run(Runner.create(),engine);
 let score = 0;
 let currentBall = null;
 let gameOver = false;
-let overTimer = 0;
 
 const scoreEl = document.getElementById("score");
 const panel = document.getElementById("gameOverPanel");
@@ -131,12 +130,12 @@ const images = [
 
 ];
 
-/* ===== ボールサイズ ===== */
+/* ===== サイズ ===== */
 
 const baseSize = 3;
 const sizes = Array.from({length:9},(_,i)=>baseSize + i*2);
 
-/* ===== ボール生成 ===== */
+/* ===== ボール作成 ===== */
 
 function createBall(x,y,index){
 
@@ -177,7 +176,7 @@ World.add(world,currentBall);
 
 spawnBall();
 
-/* ===== PCマウス移動 ===== */
+/* ===== マウス移動 ===== */
 
 document.addEventListener("mousemove",(e)=>{
 
@@ -223,15 +222,11 @@ setTimeout(spawnBall,500);
 
 }
 
-/* PC */
-
 document.addEventListener("click",(e)=>{
 
 dropBall(e.clientX);
 
 });
-
-/* スマホ */
 
 document.addEventListener("touchend",(e)=>{
 
@@ -293,20 +288,10 @@ if(gameOver) return;
 
 world.bodies.forEach(body=>{
 
-if(body.sizeIndex!==undefined){
+if(body.sizeIndex!==undefined && !body.isStatic){  
 
-/* 下に落ちた */
-if(body.position.y > height + 100){
-
+if(body.position.y > height + 50){
 endGame();
-
-}
-
-/* 左右に落ちた */
-if(body.position.x < -100 || body.position.x > width + 100){
-
-endGame();
-
 }
 
 }
@@ -315,7 +300,7 @@ endGame();
 
 });
 
-/* ===== ゲーム終了 ===== */
+/* ===== 終了 ===== */
 
 function endGame(){
 

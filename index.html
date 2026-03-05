@@ -65,7 +65,7 @@ button{padding:6px 12px;margin-top:10px;cursor:pointer;}
 const {Engine,Render,Runner,World,Bodies,Events,Body} = Matter;
 
 const engine = Engine.create();
-engine.world.gravity.y = 0.6;   // ← 落下速度調整
+engine.world.gravity.y = 0.6;
 
 const world = engine.world;
 
@@ -142,7 +142,7 @@ function createBall(x,y,index){
 
 const ball = Bodies.circle(x,y,sizes[index],{
 
-isStatic:true,           // ← 落とす前は固定
+isStatic:true,
 restitution:0.1,
 friction:0.3,
 frictionAir:0.02,
@@ -215,7 +215,7 @@ if(!currentBall) return;
 
 if(x < leftWallX || x > rightWallX) return;
 
-Body.setStatic(currentBall,false);   // ← ここで物理ON
+Body.setStatic(currentBall,false);
 
 currentBall = null;
 
@@ -285,47 +285,41 @@ scoreEl.textContent = score;
 
 });
 
-/* ===== ゲームオーバー ===== */
+/* ===== 画面外ゲームオーバー ===== */
 
 Events.on(engine,"afterUpdate",()=>{
 
 if(gameOver) return;
 
-let overflow=false;
-
 world.bodies.forEach(body=>{
 
 if(body.sizeIndex!==undefined){
 
-if(body.position.y < cupY - cupHeight/2 - 40){
-
-overflow=true;
-
-}
-
-}
-
-});
-
-if(overflow){
-
-overTimer++;
-
-if(overTimer>120){
+/* 下に落ちた */
+if(body.position.y > height + 100){
 
 endGame();
 
 }
 
-}else{
+/* 左右に落ちた */
+if(body.position.x < -100 || body.position.x > width + 100){
 
-overTimer=0;
+endGame();
+
+}
 
 }
 
 });
 
+});
+
+/* ===== ゲーム終了 ===== */
+
 function endGame(){
+
+if(gameOver) return;
 
 gameOver=true;
 
@@ -383,7 +377,6 @@ score=0;
 scoreEl.textContent=0;
 
 gameOver=false;
-overTimer=0;
 
 world.bodies.slice().forEach(b=>{
 

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>犬マージゲーム</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -23,25 +24,6 @@ right:20px;
 font-size:22px;
 }
 
-#ranking{
-position:absolute;
-top:20px;
-left:20px;
-font-size:14px;
-}
-
-#gameOverPanel{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-background:white;
-padding:20px;
-border-radius:10px;
-display:none;
-text-align:center;
-}
-
 </style>
 </head>
 
@@ -49,23 +31,6 @@ text-align:center;
 
 <div id="ui">
 Score : <span id="score">0</span>
-</div>
-
-<div id="ranking">
-<b>🌎 World Ranking</b>
-<div id="rankList"></div>
-</div>
-
-<div id="gameOverPanel">
-
-<h2>GAME OVER</h2>
-
-<input id="playerName" placeholder="名前">
-
-<br><br>
-
-<button onclick="sendScore()">送信してリトライ</button>
-
 </div>
 
 <script>
@@ -96,10 +61,10 @@ Runner.run(Runner.create(),engine);
 
 let score=0;
 let currentBall=null;
-let gameOver=false;
 
 const scoreEl=document.getElementById("score");
-const panel=document.getElementById("gameOverPanel");
+
+
 
 /* 容器 */
 
@@ -120,59 +85,43 @@ Bodies.rectangle(cupX,cupY+cupHeight/2,cupWidth,30,{isStatic:true})
 
 ]);
 
-/* ボールサイズ */
 
-const sizes=[5,7,10,14,19,25,33,43,55];
 
-/* 画像 */
+/* ボール定義（サイズと画像を完全対応） */
 
-const dogImages=[
+const balls=[
 
-"images/inugame_size1.png",
-"images/inugame_size2.png",
-"images/inugame_size3.png",
-"images/inugame_size4.png",
-"images/inugame_size5.png",
-"images/inugame_size6.png",
-"images/inugame_size7.png",
-"images/inugame_size8.png",
-"images/inugame_size9.png"
+{size:5 , img:"images/inugame_size1.png"},
+{size:7 , img:"images/inugame_size2.png"},
+{size:10 , img:"images/inugame_size3.png"},
+{size:14 , img:"images/inugame_size4.png"},
+{size:19 , img:"images/inugame_size5.png"},
+{size:25 , img:"images/inugame_size6.png"},
+{size:33 , img:"images/inugame_size7.png"},
+{size:43 , img:"images/inugame_size8.png"},
+{size:55 , img:"images/inugame_size9.png"}
 
 ];
 
-/* size2 と size3 を大きく表示 */
 
-const spriteScaleAdjust=[
-
-1.0,  // size1
-1.4,  // size2
-1.3,  // size3
-1.0,
-1.0,
-1.0,
-1.0,
-1.0,
-1.0
-
-];
 
 /* ボール作成 */
 
 function createBall(x,y,index){
 
-const r=sizes[index];
+const data=balls[index];
 
-const scale=(r*2/512)*spriteScaleAdjust[index];
+const r=data.size;
 
-const ball=Bodies.circle(x,y,r*spriteScaleAdjust[index],{
+const ball=Bodies.circle(x,y,r,{
 
 isStatic:true,
 
 render:{
 sprite:{
-texture:dogImages[index],
-xScale:scale,
-yScale:scale
+texture:data.img,
+xScale:r/10,
+yScale:r/10
 }
 }
 
@@ -184,11 +133,11 @@ return ball;
 
 }
 
+
+
 /* ボール出現 */
 
 function spawnBall(){
-
-if(gameOver)return;
 
 currentBall=createBall(width/2,120,0);
 
@@ -197,6 +146,8 @@ World.add(world,currentBall);
 }
 
 spawnBall();
+
+
 
 /* マウス移動 */
 
@@ -213,6 +164,8 @@ Body.setPosition(currentBall,{x:x,y:120});
 
 });
 
+
+
 /* 落とす */
 
 document.addEventListener("click",(e)=>{
@@ -226,6 +179,8 @@ currentBall=null;
 setTimeout(spawnBall,400);
 
 });
+
+
 
 /* 合体 */
 
@@ -243,7 +198,7 @@ b.sizeIndex!==undefined &&
 a!==currentBall &&
 b!==currentBall &&
 a.sizeIndex===b.sizeIndex &&
-a.sizeIndex<sizes.length-1
+a.sizeIndex<balls.length-1
 
 ){
 
@@ -269,97 +224,6 @@ scoreEl.textContent=score;
 });
 
 });
-
-/* ゲームオーバー */
-
-Events.on(engine,"afterUpdate",()=>{
-
-if(gameOver)return;
-
-world.bodies.forEach(body=>{
-
-if(body.sizeIndex!==undefined && !body.isStatic){
-
-if(body.position.y>height+100){
-
-endGame();
-
-}
-
-}
-
-});
-
-});
-
-function endGame(){
-
-gameOver=true;
-
-panel.style.display="block";
-
-}
-
-/* ランキング */
-
-function sendScore(){
-
-const name=document.getElementById("playerName").value||"名無し";
-
-let ranking=JSON.parse(localStorage.getItem("ranking")||"[]");
-
-ranking.push({name,score});
-
-ranking.sort((a,b)=>b.score-a.score);
-
-ranking=ranking.slice(0,10);
-
-localStorage.setItem("ranking",JSON.stringify(ranking));
-
-updateRanking();
-
-restartGame();
-
-}
-
-function updateRanking(){
-
-const ranking=JSON.parse(localStorage.getItem("ranking")||"[]");
-
-const list=document.getElementById("rankList");
-
-list.innerHTML="";
-
-ranking.forEach((r,i)=>{
-
-list.innerHTML+=`<div>${i+1}. ${r.name} - ${r.score}</div>`;
-
-});
-
-}
-
-updateRanking();
-
-/* リスタート */
-
-function restartGame(){
-
-panel.style.display="none";
-
-score=0;
-scoreEl.textContent=0;
-
-gameOver=false;
-
-world.bodies.slice().forEach(b=>{
-
-if(!b.isStatic)World.remove(world,b);
-
-});
-
-spawnBall();
-
-}
 
 </script>
 

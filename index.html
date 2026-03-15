@@ -3,25 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>犬マージゲーム</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<title>犬ゲーム</title>
 
 <style>
 
 body{
 margin:0;
 overflow:hidden;
-background:#fff4ec;
+background:#f4f4f4;
 font-family:sans-serif;
 }
 
 #ui{
 position:absolute;
-top:20px;
 right:20px;
-font-size:22px;
+top:20px;
+font-size:20px;
+}
+
+canvas{
+display:block;
+margin:auto;
 }
 
 </style>
@@ -30,160 +32,121 @@ font-size:22px;
 <body>
 
 <div id="ui">
-Score : <span id="score">0</span>
+<div>Score: <span id="score">0</span></div>
+<div>HighScore: <span id="highScore">0</span></div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <script>
 
-const {Engine,Render,Runner,World,Bodies,Body,Events} = Matter;
+const Engine=Matter.Engine;
+const Render=Matter.Render;
+const World=Matter.World;
+const Bodies=Matter.Bodies;
+const Events=Matter.Events;
 
-const engine = Engine.create();
-engine.world.gravity.y = 0.7;
+const engine=Engine.create();
+const world=engine.world;
 
-const world = engine.world;
+const width=400;
+const height=600;
 
-const width = window.innerWidth;
-const height = window.innerHeight;
-
-const render = Render.create({
+const render=Render.create({
 element:document.body,
 engine:engine,
 options:{
 width:width,
 height:height,
 wireframes:false,
-background:"#fff4ec"
+background:"#ffffff"
 }
 });
 
 Render.run(render);
-Runner.run(Runner.create(),engine);
-
-let score=0;
-let currentBall=null;
-
-const scoreEl=document.getElementById("score");
+Engine.run(engine);
 
 
+// 壁
+const ground=Bodies.rectangle(width/2,height+30,width,60,{isStatic:true});
+const leftWall=Bodies.rectangle(-30,height/2,60,height,{isStatic:true});
+const rightWall=Bodies.rectangle(width+30,height/2,60,height,{isStatic:true});
 
-/* 容器 */
-
-const cupWidth=320;
-const cupHeight=450;
-
-const cupX=width/2;
-const cupY=height*0.65;
-
-const leftWallX=cupX-cupWidth/2;
-const rightWallX=cupX+cupWidth/2;
-
-World.add(world,[
-
-Bodies.rectangle(leftWallX,cupY,30,cupHeight,{isStatic:true}),
-Bodies.rectangle(rightWallX,cupY,30,cupHeight,{isStatic:true}),
-Bodies.rectangle(cupX,cupY+cupHeight/2,cupWidth,30,{isStatic:true})
-
-]);
+World.add(world,[ground,leftWall,rightWall]);
 
 
+// ボールサイズ
+const sizes=[8,11,15];
 
-/* ボール定義（サイズと画像を完全対応） */
-
-const balls=[
-
-{size:5 , img:"images/inugame_size1.png"},
-{size:7 , img:"images/inugame_size2.png"},
-{size:10 , img:"images/inugame_size3.png"},
-{size:14 , img:"images/inugame_size4.png"},
-{size:19 , img:"images/inugame_size5.png"},
-{size:25 , img:"images/inugame_size6.png"},
-{size:33 , img:"images/inugame_size7.png"},
-{size:43 , img:"images/inugame_size8.png"},
-{size:55 , img:"images/inugame_size9.png"}
-
+// ボール画像
+const dogImages=[
+"images/inugame_size1.png",
+"images/inugame_size2.png",
+"images/inugame_size3.png"
 ];
 
+// 画像補正（画像の写り方の差を調整）
+const imageScale=[
+1.0,
+1.25,
+1.45
+];
+
+let currentBall=null;
+
+let score=0;
+let highScore=localStorage.getItem("highScore")||0;
+let isGameOver=false;
+
+document.getElementById("highScore").innerText=highScore;
 
 
-/* ボール作成 */
+// ボール生成
+function createBall(x,y,sizeIndex){
 
-function createBall(x,y,index){
+const radius=sizes[sizeIndex];
 
-const data=balls[index];
-
-const r=data.size;
-
-const ball=Bodies.circle(x,y,r,{
-
-isStatic:true,
-
+const ball=Bodies.circle(x,y,radius,{
+restitution:0.2,
+friction:0.1,
+density:0.001,
 render:{
 sprite:{
-texture:data.img,
-xScale:r/10,
-yScale:r/10
+texture:dogImages[sizeIndex],
+xScale:(radius*2/512)*imageScale[sizeIndex],
+yScale:(radius*2/512)*imageScale[sizeIndex]
 }
 }
-
 });
 
-ball.sizeIndex=index;
+ball.sizeIndex=sizeIndex;
+
+World.add(world,ball);
 
 return ball;
 
 }
 
 
-
-/* ボール出現 */
-
-function spawnBall(){
-
-currentBall=createBall(width/2,120,0);
-
-World.add(world,currentBall);
-
-}
-
-spawnBall();
+// 最初のボール
+currentBall=createBall(width/2,50,0);
 
 
+// クリックで落とす
+document.addEventListener("mousedown",function(e){
 
-/* マウス移動 */
+if(isGameOver)return;
 
-document.addEventListener("mousemove",(e)=>{
+currentBall.isStatic=false;
 
-if(!currentBall)return;
-
-let x=e.clientX;
-
-if(x<leftWallX+10)x=leftWallX+10;
-if(x>rightWallX-10)x=rightWallX-10;
-
-Body.setPosition(currentBall,{x:x,y:120});
+setTimeout(()=>{
+currentBall=createBall(width/2,50,0);
+},500);
 
 });
 
 
-
-/* 落とす */
-
-document.addEventListener("click",(e)=>{
-
-if(!currentBall)return;
-
-Body.setStatic(currentBall,false);
-
-currentBall=null;
-
-setTimeout(spawnBall,400);
-
-});
-
-
-
-/* 合体 */
-
+// 合体処理
 Events.on(engine,"collisionStart",event=>{
 
 event.pairs.forEach(pair=>{
@@ -191,33 +154,33 @@ event.pairs.forEach(pair=>{
 const a=pair.bodyA;
 const b=pair.bodyB;
 
-if(
+if(a.sizeIndex!==undefined && b.sizeIndex!==undefined){
 
-a.sizeIndex!==undefined &&
-b.sizeIndex!==undefined &&
-a!==currentBall &&
-b!==currentBall &&
-a.sizeIndex===b.sizeIndex &&
-a.sizeIndex<balls.length-1
+if(a.sizeIndex===b.sizeIndex){
 
-){
+const newSize=a.sizeIndex+1;
 
-World.remove(world,[a,b]);
+if(newSize>=sizes.length)return;
+
+World.remove(world,a);
+World.remove(world,b);
 
 const newBall=createBall(
-
 (a.position.x+b.position.x)/2,
 (a.position.y+b.position.y)/2,
-a.sizeIndex+1
-
+newSize
 );
 
-Body.setStatic(newBall,false);
+score+=10;
+document.getElementById("score").innerText=score;
 
-World.add(world,newBall);
+if(score>highScore){
+highScore=score;
+localStorage.setItem("highScore",highScore);
+document.getElementById("highScore").innerText=highScore;
+}
 
-score+=(a.sizeIndex+1)*10;
-scoreEl.textContent=score;
+}
 
 }
 

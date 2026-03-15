@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Inu Merge Game</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
@@ -98,12 +99,10 @@ let gameOver = false;
 const scoreEl = document.getElementById("score");
 const panel = document.getElementById("gameOverPanel");
 
-const isMobile = width < 768;
+/* 容器 */
 
-/* ===== 容器 ===== */
-
-const cupWidth = isMobile ? 380 : 320;
-const cupHeight = isMobile ? 520 : 480;
+const cupWidth = 320;
+const cupHeight = 480;
 
 const cupX = width/2;
 const cupY = height*0.65;
@@ -119,11 +118,11 @@ Bodies.rectangle(cupX,cupY+cupHeight/2,cupWidth,30,{isStatic:true})
 
 ]);
 
-/* ===== ボールサイズ（修正） ===== */
+/* ボールサイズ */
 
-const sizes = [8,11,15,20,26,34,44,56,70];
+const sizes=[8,12,16,22,30,40,52,68,88];
 
-/* ===== ボール画像 ===== */
+/* 画像 */
 
 const dogImages=[
 
@@ -139,40 +138,37 @@ const dogImages=[
 
 ];
 
-/* ===== ボール作成 ===== */
+/* ボール */
 
 function createBall(x,y,index){
 
 const ball = Bodies.circle(x,y,sizes[index],{
 
 isStatic:true,
-restitution:0.1,
-friction:0.3,
-frictionAir:0.02,
 
 render:{
 sprite:{
 texture:dogImages[index],
-xScale:(sizes[index]*2)/300,
-yScale:(sizes[index]*2)/300
+xScale:sizes[index]/50,
+yScale:sizes[index]/50
 }
 }
 
 });
 
-ball.sizeIndex = index;
+ball.sizeIndex=index;
 
 return ball;
 
 }
 
-/* ===== スポーン ===== */
+/* スポーン */
 
 function spawnBall(){
 
 if(gameOver) return;
 
-currentBall = createBall(width/2,120,0);
+currentBall=createBall(width/2,120,0);
 
 World.add(world,currentBall);
 
@@ -180,89 +176,56 @@ World.add(world,currentBall);
 
 spawnBall();
 
-/* ===== マウス移動 ===== */
+/* 移動 */
 
 document.addEventListener("mousemove",(e)=>{
 
-if(!currentBall || gameOver) return;
-
-let x = e.clientX;
-
-if(x < leftWallX+10) x = leftWallX+10;
-if(x > rightWallX-10) x = rightWallX-10;
-
-Body.setPosition(currentBall,{x:x,y:120});
-
-});
-
-/* ===== スマホ移動 ===== */
-
-document.addEventListener("touchmove",(e)=>{
-
-if(!currentBall || gameOver) return;
-
-let x = e.touches[0].clientX;
-
-if(x < leftWallX+10) x = leftWallX+10;
-if(x > rightWallX-10) x = rightWallX-10;
-
-Body.setPosition(currentBall,{x:x,y:120});
-
-});
-
-/* ===== 落とす ===== */
-
-function dropBall(x){
-
 if(!currentBall) return;
 
-if(x < leftWallX || x > rightWallX) return;
+let x=e.clientX;
 
-Body.setStatic(currentBall,false);
+if(x<leftWallX+10)x=leftWallX+10;
+if(x>rightWallX-10)x=rightWallX-10;
 
-currentBall = null;
+Body.setPosition(currentBall,{x:x,y:120});
 
-setTimeout(spawnBall,500);
+});
 
-}
+/* 落とす */
 
 document.addEventListener("click",(e)=>{
 
-dropBall(e.clientX);
+if(!currentBall)return;
+
+Body.setStatic(currentBall,false);
+
+currentBall=null;
+
+setTimeout(spawnBall,400);
 
 });
 
-document.addEventListener("touchend",(e)=>{
-
-const x = e.changedTouches[0].clientX;
-
-dropBall(x);
-
-});
-
-/* ===== 合体 ===== */
+/* 合体 */
 
 Events.on(engine,"collisionStart",event=>{
 
 event.pairs.forEach(pair=>{
 
-const a = pair.bodyA;
-const b = pair.bodyB;
+const a=pair.bodyA;
+const b=pair.bodyB;
 
 if(
-
 a.sizeIndex!==undefined &&
 b.sizeIndex!==undefined &&
 a!==currentBall &&
 b!==currentBall &&
 a.sizeIndex===b.sizeIndex &&
-a.sizeIndex < sizes.length-1
-
+a.sizeIndex<sizes.length-1
 ){
 
 World.remove(world,[a,b]);
 
-const newBall = createBall(
+const newBall=createBall(
 a.position.x,
 a.position.y,
 a.sizeIndex+1
@@ -272,109 +235,16 @@ Body.setStatic(newBall,false);
 
 World.add(world,newBall);
 
-score += (a.sizeIndex+1)*10;
-
-scoreEl.textContent = score;
-
-}
-
-});
-
-});
-
-/* ===== 画面外ゲームオーバー ===== */
-
-Events.on(engine,"afterUpdate",()=>{
-
-if(gameOver) return;
-
-world.bodies.forEach(body=>{
-
-if(body.sizeIndex!==undefined && !body.isStatic){
-
-if(body.position.y > height + 50){
-endGame();
-}
+score+=(a.sizeIndex+1)*10;
+scoreEl.textContent=score;
 
 }
 
 });
 
 });
-
-/* ===== 終了 ===== */
-
-function endGame(){
-
-if(gameOver) return;
-
-gameOver=true;
-
-panel.style.display="block";
-
-}
-
-/* ===== ランキング ===== */
-
-function sendScore(){
-
-const name = document.getElementById("playerName").value || "名無し";
-
-let ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
-
-ranking.push({name,score});
-
-ranking.sort((a,b)=>b.score-a.score);
-
-ranking = ranking.slice(0,10);
-
-localStorage.setItem("ranking",JSON.stringify(ranking));
-
-updateRanking();
-
-restartGame();
-
-}
-
-function updateRanking(){
-
-const ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
-
-const list = document.getElementById("rankList");
-
-list.innerHTML="";
-
-ranking.forEach((r,i)=>{
-
-list.innerHTML += `<div>${i+1}. ${r.name} - ${r.score}</div>`;
-
-});
-
-}
-
-updateRanking();
-
-/* ===== リスタート ===== */
-
-function restartGame(){
-
-panel.style.display="none";
-
-score=0;
-scoreEl.textContent=0;
-
-gameOver=false;
-
-world.bodies.slice().forEach(b=>{
-
-if(!b.isStatic) World.remove(world,b);
-
-});
-
-spawnBall();
-
-}
 
 </script>
+
 </body>
 </html>

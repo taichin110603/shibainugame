@@ -114,16 +114,15 @@ Bodies.rectangle(cupX,cupY+cupHeight/2,cupWidth,30,{isStatic:true})
 
 ]);
 
-/* ===== ボールサイズ ===== */
+/* ===== ボールサイズ（修正） ===== */
 
-const baseSizes=[18,26,36,48,62,78,100,125,160];
-const sizeMultiplier = isMobile ? 0.75 : 0.6;
+const baseSizes=[12,18,26,36,48,62,78,100,125];
+const sizeMultiplier = isMobile ? 0.6 : 0.5;
 const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
 
 /* ===== ボール画像 ===== */
 
 const dogImages=[
-
 "images/inugame_size1.png",
 "images/inugame_size2.png",
 "images/inugame_size3.png",
@@ -133,7 +132,6 @@ const dogImages=[
 "images/inugame_size7.png",
 "images/inugame_size8.png",
 "images/inugame_size9.png"
-
 ];
 
 /* ===== ボール作成 ===== */

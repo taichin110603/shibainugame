@@ -114,9 +114,15 @@ Bodies.rectangle(cupX,cupY+cupHeight/2,cupWidth,30,{isStatic:true})
 
 ]);
 
-/* ===== 画像 ===== */
+/* ===== ボールサイズ ===== */
 
-const images = [
+const baseSizes=[18,26,36,48,62,78,100,125,160];
+const sizeMultiplier = isMobile ? 0.75 : 0.6;
+const sizes = baseSizes.map(s=>Math.round(s*sizeMultiplier));
+
+/* ===== ボール画像 ===== */
+
+const dogImages=[
 
 "images/inugame_size1.png",
 "images/inugame_size2.png",
@@ -128,20 +134,6 @@ const images = [
 "images/inugame_size8.png",
 "images/inugame_size9.png"
 
-];
-
-/* ===== ボールサイズ（修正） ===== */
-
-const sizes = [
-12,
-18,
-26,
-36,
-48,
-64,
-82,
-104,
-130
 ];
 
 /* ===== ボール作成 ===== */
@@ -157,7 +149,7 @@ frictionAir:0.02,
 
 render:{
 sprite:{
-texture:images[index],
+texture:dogImages[index],
 xScale:(sizes[index]*2)/300,
 yScale:(sizes[index]*2)/300
 }

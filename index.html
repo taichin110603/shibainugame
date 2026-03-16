@@ -70,11 +70,6 @@ button{padding:6px 12px;margin-top:10px;cursor:pointer;}
 const {Engine,Render,Runner,World,Bodies,Events,Body} = Matter;
 
 const engine = Engine.create();
-
-/* ★ 衝突精度を上げる */
-engine.positionIterations = 10;
-engine.velocityIterations = 10;
-
 engine.world.gravity.y = 0.6;
 
 const world = engine.world;
@@ -124,19 +119,9 @@ Bodies.rectangle(cupX,cupY+cupHeight/2,cupWidth,30,{isStatic:true})
 
 ]);
 
-/* ===== ボールサイズ（画像番号と対応） ===== */
+/* ===== ボールサイズ ===== */
 
-const sizes = [
-16,
-22,
-30,
-40,
-52,
-68,
-88,
-112,
-140
-];
+const sizes = [16,22,30,40,52,68,88,112,140];
 
 /* ===== ボール画像 ===== */
 
@@ -154,34 +139,45 @@ const dogImages=[
 
 ];
 
-/* ===== ボール作成 ===== */
+/* ===== ボール作成（画像サイズ自動調整版） ===== */
 
 function createBall(x,y,index){
 
 const radius = sizes[index];
+const texture = dogImages[index];
 
 const ball = Bodies.circle(x,y,radius,{
 
 isStatic:true,
-restitution:0.05,
-friction:0.2,
-frictionAir:0.01,
-density:0.001,
+restitution:0.1,
+friction:0.3,
+frictionAir:0.02,
 
 render:{
 sprite:{
-texture:dogImages[index],
-
-/* 画像サイズを円に完全フィット */
-xScale:(radius*2)/256,
-yScale:(radius*2)/256
-
+texture:texture,
+xScale:1,
+yScale:1
 }
 }
 
 });
 
 ball.sizeIndex = index;
+
+/* 画像サイズ取得してスケールを自動調整 */
+
+const img = new Image();
+img.src = texture;
+
+img.onload = () => {
+
+const scale = (radius*2) / img.width;
+
+ball.render.sprite.xScale = scale;
+ball.render.sprite.yScale = scale;
+
+};
 
 return ball;
 

@@ -25,6 +25,16 @@ top:20px;
 right:20px;
 font-size:20px;
 color:#6b3e26;
+text-align:center;
+}
+
+#nextBox{
+margin-top:10px;
+}
+
+#nextImg{
+width:50px;
+height:50px;
 }
 
 #ranking{
@@ -55,7 +65,15 @@ button{padding:6px 12px;margin-top:10px;cursor:pointer;}
 
 <body>
 
-<div id="ui">Score: <span id="score">0</span></div>
+<div id="ui">
+Score: <span id="score">0</span>
+
+<div id="nextBox">
+NEXT<br>
+<img id="nextImg">
+</div>
+
+</div>
 
 <div id="ranking">
 <b>🌎 World Ranking</b>
@@ -72,7 +90,7 @@ button{padding:6px 12px;margin-top:10px;cursor:pointer;}
 
 <script>
 
-/* ===== Firebase設定 ===== */
+/* ===== Firebase ===== */
 
 const firebaseConfig = {
 apiKey: "AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
@@ -119,6 +137,7 @@ let gameOver = false;
 
 const scoreEl = document.getElementById("score");
 const panel = document.getElementById("gameOverPanel");
+const nextImg = document.getElementById("nextImg");
 
 const isMobile = width < 768;
 
@@ -160,6 +179,18 @@ const dogImages=[
 "images/inugame_size9.png"
 
 ];
+
+/* ===== NEXT管理 ===== */
+
+let nextBallIndex = Math.floor(Math.random()*3);
+
+function updateNextUI(){
+
+nextImg.src = dogImages[nextBallIndex];
+
+}
+
+updateNextUI();
 
 /* ===== ボール作成 ===== */
 
@@ -203,17 +234,21 @@ return ball;
 
 }
 
-/* ===== スポーン（size1〜3ランダム） ===== */
+/* ===== スポーン ===== */
 
 function spawnBall(){
 
 if(gameOver) return;
 
-const randomIndex = Math.floor(Math.random()*3);
-
-currentBall = createBall(width/2,120,randomIndex);
+currentBall = createBall(width/2,120,nextBallIndex);
 
 World.add(world,currentBall);
+
+/* 次を決める */
+
+nextBallIndex = Math.floor(Math.random()*3);
+
+updateNextUI();
 
 }
 
@@ -321,7 +356,7 @@ scoreEl.textContent = score;
 
 });
 
-/* ===== 画面外ゲームオーバー ===== */
+/* ===== ゲームオーバー ===== */
 
 Events.on(engine,"afterUpdate",()=>{
 
@@ -341,8 +376,6 @@ endGame();
 
 });
 
-/* ===== 終了 ===== */
-
 function endGame(){
 
 if(gameOver) return;
@@ -353,7 +386,7 @@ panel.style.display="block";
 
 }
 
-/* ===== スコア送信 ===== */
+/* ===== Firebaseスコア送信 ===== */
 
 function sendScore(){
 
@@ -365,13 +398,13 @@ restartGame();
 
 }
 
-/* ===== ランキング表示 ===== */
+/* ===== ランキング ===== */
 
 function updateRanking(){
 
 db.ref("ranking").orderByChild("score").limitToLast(10).on("value",snap=>{
 
-let data = [];
+let data=[];
 
 snap.forEach(d=>{
 
@@ -381,7 +414,8 @@ data.push(d.val());
 
 data.reverse();
 
-const list = document.getElementById("rankList");
+const list=document.getElementById("rankList");
+
 list.innerHTML="";
 
 data.forEach((r,i)=>{

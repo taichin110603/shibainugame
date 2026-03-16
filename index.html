@@ -4,7 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Inu Merge Game</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
 <style>
 body{
@@ -66,6 +71,23 @@ button{padding:6px 12px;margin-top:10px;cursor:pointer;}
 </div>
 
 <script>
+
+/* ===== Firebase設定 ===== */
+
+const firebaseConfig = {
+apiKey: "AIzaSyDzxYXP5Lyz1Ky-q1S1hJO746gIU6VaAy8",
+authDomain: "shibainugame-1865a.firebaseapp.com",
+databaseURL: "https://shibainugame-1865a-default-rtdb.asia-southeast1.firebasedatabase.app",
+projectId: "shibainugame-1865a",
+storageBucket: "shibainugame-1865a.firebasestorage.app",
+messagingSenderId: "278247707611",
+appId: "1:278247707611:web:9a04085c0493fd2ee64dfe"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ===== Matter ===== */
 
 const {Engine,Render,Runner,World,Bodies,Events,Body} = Matter;
 
@@ -139,7 +161,7 @@ const dogImages=[
 
 ];
 
-/* ===== ボール作成（画像サイズ自動調整版） ===== */
+/* ===== ボール作成 ===== */
 
 function createBall(x,y,index){
 
@@ -165,14 +187,12 @@ yScale:1
 
 ball.sizeIndex = index;
 
-/* 画像サイズ取得してスケールを自動調整 */
-
 const img = new Image();
 img.src = texture;
 
-img.onload = () => {
+img.onload = ()=>{
 
-const scale = (radius*2) / img.width;
+const scale = (radius*2)/img.width;
 
 ball.render.sprite.xScale = scale;
 ball.render.sprite.yScale = scale;
@@ -183,13 +203,15 @@ return ball;
 
 }
 
-/* ===== スポーン ===== */
+/* ===== スポーン（size1〜3ランダム） ===== */
 
 function spawnBall(){
 
 if(gameOver) return;
 
-currentBall = createBall(width/2,120,0);
+const randomIndex = Math.floor(Math.random()*3);
+
+currentBall = createBall(width/2,120,randomIndex);
 
 World.add(world,currentBall);
 
@@ -331,39 +353,42 @@ panel.style.display="block";
 
 }
 
-/* ===== ランキング ===== */
+/* ===== スコア送信 ===== */
 
 function sendScore(){
 
 const name = document.getElementById("playerName").value || "名無し";
 
-let ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
-
-ranking.push({name,score});
-
-ranking.sort((a,b)=>b.score-a.score);
-
-ranking = ranking.slice(0,10);
-
-localStorage.setItem("ranking",JSON.stringify(ranking));
-
-updateRanking();
+db.ref("ranking").push({name,score});
 
 restartGame();
 
 }
 
+/* ===== ランキング表示 ===== */
+
 function updateRanking(){
 
-const ranking = JSON.parse(localStorage.getItem("ranking")||"[]");
+db.ref("ranking").orderByChild("score").limitToLast(10).on("value",snap=>{
+
+let data = [];
+
+snap.forEach(d=>{
+
+data.push(d.val());
+
+});
+
+data.reverse();
 
 const list = document.getElementById("rankList");
-
 list.innerHTML="";
 
-ranking.forEach((r,i)=>{
+data.forEach((r,i)=>{
 
-list.innerHTML += `<div>${i+1}. ${r.name} - ${r.score}</div>`;
+list.innerHTML+=`<div>${i+1}. ${r.name} - ${r.score}</div>`;
+
+});
 
 });
 
